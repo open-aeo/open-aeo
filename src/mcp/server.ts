@@ -2,10 +2,10 @@
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { z } from "zod";
 import { PerplexityApi } from "../adapters/PerplexityApi.js";
 import { handleAeoCheck, handleAeoReport } from "./tools.js";
 import { JsonStorage } from "../adapters/JSONStorage.js";
+import { z } from "zod";
 
 export class AeoMcpServer {
   private server: McpServer;
