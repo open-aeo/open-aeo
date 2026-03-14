@@ -40,7 +40,7 @@ export class PerplexityApi implements IAnswerEngine {
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       console.error("Failed to fetch data from Perplexity:", message);
-      throw new Error(`Answer Engine API Error: ${message}`);
+      throw new Error(`Answer Engine API Error: ${message}`, { cause: error });
     }
   }
 }
