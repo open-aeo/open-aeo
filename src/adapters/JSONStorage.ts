@@ -6,51 +6,51 @@ import { AeoCheckResult } from "../core/types.js";
 
 export class JsonStorage implements IStorage {
   private filePath: string;
+  private saveQueue: Promise<void> = Promise.resolve();
 
   constructor() {
-    const homeDir = os.homedir();
-    const folderPath = path.join(homeDir, ".open-aeo");
+    const folderPath = path.join(os.homedir(), ".open-aeo");
     this.filePath = path.join(folderPath, "history.json");
   }
 
   private async ensureDirectory(): Promise<void> {
-    const dir = path.dirname(this.filePath);
-    await fs.mkdir(dir, { recursive: true });
+    await fs.mkdir(path.dirname(this.filePath), { recursive: true });
   }
 
-  async save(result: AeoCheckResult): Promise<void> {
-    await this.ensureDirectory();
-
-    let history: AeoCheckResult[] = [];
-
+  private async readHistory(): Promise<AeoCheckResult[]> {
     try {
       const data = await fs.readFile(this.filePath, "utf-8");
-      history = JSON.parse(data);
+      return JSON.parse(data) as AeoCheckResult[];
     } catch (error) {
-      console.log("file does not exist, please create");
+      if (
+        error instanceof Error &&
+        (error as NodeJS.ErrnoException).code === "ENOENT"
+      ) {
+        return [];
+      }
+      throw error;
     }
-
-    history.push(result);
-
-    await fs.writeFile(
-      this.filePath,
-      JSON.stringify(history, null, 2),
-      "utf-8",
-    );
+  }
+  async save(result: AeoCheckResult): Promise<void> {
+    this.saveQueue = this.saveQueue.then(async () => {
+      await this.ensureDirectory();
+      const history = await this.readHistory();
+      history.push(result);
+      await fs.writeFile(
+        this.filePath,
+        JSON.stringify(history, null, 2),
+        "utf-8",
+      );
+    });
+    return this.saveQueue;
   }
 
   async getHistory(query?: string): Promise<AeoCheckResult[]> {
-    try {
-      const data = await fs.readFile(this.filePath, "utf-8");
-      const history: AeoCheckResult[] = JSON.parse(data);
+    const history = await this.readHistory();
+    if (!query) return history;
 
-      if (query) {
-        return history.filter((item) => item.query === query);
-      }
-
-      return history;
-    } catch (error) {
-      return [];
-    }
+    return history.filter(
+      (item) => item.query.toLowerCase() === query.toLowerCase(),
+    );
   }
 }
