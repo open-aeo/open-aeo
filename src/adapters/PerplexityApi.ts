@@ -1,9 +1,9 @@
 import OpenAI from "openai";
-import { IAnswerEngine } from "../ports/IAnswerEngine";
-import { EngineResponse } from "../core/types";
+import { IAnswerEngine } from "../ports/IAnswerEngine.js";
+import { EngineResponse } from "../core/types.js";
 
 interface PerplexityResponse extends OpenAI.Chat.ChatCompletion {
-  citations?: [];
+  citations?: string[];
 }
 
 export class PerplexityApi implements IAnswerEngine {
