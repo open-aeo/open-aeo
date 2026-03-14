@@ -1,26 +1,33 @@
 {
   "name": "open-aeo",
   "version": "1.0.0",
-  "main": "index.js",
+  "description": "An open-source MCP server for Answer Engine Optimization (AEO) monitoring.",
+  "main": "dist/index.js",
+  "type": "module",
   "scripts": {
-    "test": "vitest run"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
-  "devDependencies": {
-    "@types/node": "^25.5.0",
-    "eslint": "^10.0.3",
-    "eslint-config-prettier": "^10.1.8",
-    "prettier": "^3.8.1",
-    "tsx": "^4.21.0",
-    "typescript": "^5.9.3",
-    "vitest": "^4.1.0"
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "format": "prettier --write \"src/**/*.ts\""
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.27.1",
-    "openai": "^6.29.0",
-    "zod": "^4.3.6"
-  }
+    "@modelcontextprotocol/sdk": "^1.0.1",
+    "openai": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "eslint": "^8.0.0",
+    "eslint-config-prettier": "^9.0.0",
+    "prettier": "^3.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0",
+    "vitest": "^1.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "author": "brgv-code/open-aeo",
+  "license": "MIT"
 }

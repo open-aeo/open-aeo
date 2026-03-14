@@ -1,7 +1,7 @@
-import { parseAeoResponse } from "../core/citationParser";
-import { AeoCheckResult, TargetConfig } from "../core/types";
-import { IAnswerEngine } from "../ports/IAnswerEngine";
-import { IStorage } from "../ports/IStorage";
+import { parseAeoResponse } from "../core/citationParser.js";
+import { AeoCheckResult, TargetConfig } from "../core/types.js";
+import { IAnswerEngine } from "../ports/IAnswerEngine.js";
+import { IStorage } from "../ports/IStorage.js";
 
 async function runSingleCheck(
   engine: IAnswerEngine,
