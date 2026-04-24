@@ -9,8 +9,18 @@ export class JsonStorage implements IStorage {
   private saveQueue: Promise<void> = Promise.resolve();
 
   constructor() {
-    const folderPath = path.join(os.homedir(), ".open-aeo");
-    this.filePath = path.join(folderPath, "history.json");
+    const envPath = process.env.OPEN_AEO_STORE_PATH;
+    if (envPath && envPath.trim() !== "") {
+      if (!path.isAbsolute(envPath)) {
+        throw new Error(
+          `OPEN_AEO_STORE_PATH must be an absolute path, got: "${envPath}"`,
+        );
+      }
+      this.filePath = envPath;
+    } else {
+      const folderPath = path.join(os.homedir(), ".open-aeo");
+      this.filePath = path.join(folderPath, "history.json");
+    }
   }
 
   private async ensureDirectory(): Promise<void> {
@@ -20,7 +30,14 @@ export class JsonStorage implements IStorage {
   private async readHistory(): Promise<AeoCheckResult[]> {
     try {
       const data = await fs.readFile(this.filePath, "utf-8");
-      return JSON.parse(data) as AeoCheckResult[];
+      try {
+        return JSON.parse(data) as AeoCheckResult[];
+      } catch {
+        console.error(
+          `Warning: history file at "${this.filePath}" contains invalid JSON. Returning empty history.`,
+        );
+        return [];
+      }
     } catch (error) {
       if (
         error instanceof Error &&

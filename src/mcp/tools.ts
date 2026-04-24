@@ -3,6 +3,31 @@ import { AeoCheckResult, TargetConfig } from "../core/types.js";
 import { IAnswerEngine } from "../ports/IAnswerEngine.js";
 import { IStorage } from "../ports/IStorage.js";
 
+export async function handleAeoHistory(
+  storage: IStorage,
+  query?: string,
+  domain?: string,
+): Promise<{ content: Array<{ type: "text"; text: string }> }> {
+  let history = await storage.getHistory(query);
+
+  if (domain) {
+    const lowerDomain = domain.toLowerCase();
+    history = history.filter((r) =>
+      r.targetDomain.toLowerCase().includes(lowerDomain),
+    );
+  }
+
+  const header = `History: ${history.length} results`;
+  const lines = history.map(
+    (r) =>
+      `${r.cited ? "✅" : "❌"} "${r.query}" — ${r.targetDomain} — position: ${r.position ?? "N/A"} — ${new Date(r.timestamp).toLocaleDateString()}`,
+  );
+
+  return {
+    content: [{ type: "text", text: [header, ...lines].join("\n") }],
+  };
+}
+
 async function runSingleCheck(
   engine: IAnswerEngine,
   storage: IStorage,
