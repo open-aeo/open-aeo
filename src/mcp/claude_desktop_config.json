@@ -1,17 +1,12 @@
 {
+  "_readme": "open-aeo goes here as an mcpServer. For Peec: Claude Desktop uses the built-in Connector UI — go to Settings > Connectors > search 'Peec AI' and install it there. Do NOT add Peec manually to this file; Claude Desktop will reject it.",
   "mcpServers": {
     "open-aeo": {
       "command": "node",
-      "args": ["/Users/username/path-to-repo/open-aeo/dist/index.js"],
+      "args": ["/absolute/path/to/open-aeo/dist/index.js"],
       "env": {
-        "PERPLEXITY_API_KEY": "pplx-your-perplexity-api-key-here"
+        "PERPLEXITY_API_KEY": "pplx-your-key-here"
       }
     }
-  },
-  "preferences": {
-    "coworkScheduledTasksEnabled": false,
-    "ccdScheduledTasksEnabled": false,
-    "coworkWebSearchEnabled": true,
-    "sidebarMode": "chat"
   }
 }
