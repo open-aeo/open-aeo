@@ -2,16 +2,10 @@
   "mcpServers": {
     "open-aeo": {
       "command": "node",
-      "args": ["/Users/username/path-to-repo/open-aeo/dist/index.js"],
+      "args": ["/absolute/path/to/open-aeo/dist/index.js"],
       "env": {
-        "PERPLEXITY_API_KEY": "pplx-your-perplexity-api-key-here"
+        "PERPLEXITY_API_KEY": "your-perplexity-api-key-here"
       }
     }
-  },
-  "preferences": {
-    "coworkScheduledTasksEnabled": false,
-    "ccdScheduledTasksEnabled": false,
-    "coworkWebSearchEnabled": true,
-    "sidebarMode": "chat"
   }
 }

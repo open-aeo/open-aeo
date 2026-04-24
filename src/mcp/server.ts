@@ -3,18 +3,30 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { PerplexityApi } from "../adapters/PerplexityApi.js";
-import { handleAeoCheck, handleAeoReport, handleAeoHistory } from "./tools.js";
+import {
+  handleAeoCheck,
+  handleAeoReport,
+  handleAeoHistory,
+  handleAeoGapReport,
+  handleAeoGapHistory,
+  handleAeoAnalyse,
+  handleAeoRecommend,
+} from "./tools.js";
+import { GapTarget } from "../core/types.js";
 import { JsonStorage } from "../adapters/JSONStorage.js";
+import { PageFetcher } from "../adapters/PageFetcher.js";
 import { z } from "zod";
 
 export class AeoMcpServer {
   private server: McpServer;
   private engine: PerplexityApi;
   private storage: JsonStorage;
+  private fetcher: PageFetcher;
 
   constructor(apiKey: string) {
     this.engine = new PerplexityApi(apiKey);
     this.storage = new JsonStorage();
+    this.fetcher = new PageFetcher();
     this.server = new McpServer({ name: "open-aeo", version: "1.0.0" });
     this.setupHandlers();
   }
@@ -112,7 +124,193 @@ export class AeoMcpServer {
         }
       },
     );
+
+    this.server.registerTool(
+      "aeo_gap_report",
+      {
+        description: `Run a live AEO gap analysis. Takes a list of queries where competitors are beating you (from Peec gap data or manual input) and validates each gap live against Perplexity. Returns a prioritised report showing confirmed gaps, emerging gaps, and which gaps are already closing, with specific content recommendations for each confirmed gap.`,
+        inputSchema: {
+          gaps: z
+            .array(
+              z.object({
+                query: z.string().describe("The search query to check"),
+                targetDomain: z
+                  .string()
+                  .describe("Your domain (e.g. 'notion.so')"),
+                brandName: z.string().optional().describe("Your brand name"),
+                competitorDomains: z
+                  .array(z.string())
+                  .describe(
+                    "Competitor domains that Peec found beating you on this query",
+                  ),
+                peecOpportunityScore: z
+                  .number()
+                  .min(0)
+                  .max(1)
+                  .optional()
+                  .describe(
+                    "Opportunity score from Peec (0-1, higher = bigger gap)",
+                  ),
+                peecTopicName: z
+                  .string()
+                  .optional()
+                  .describe("Topic grouping from Peec for organising output"),
+                source: z
+                  .enum(["peec", "manual"])
+                  .describe(
+                    "Whether this gap was identified by Peec or entered manually",
+                  ),
+              }),
+            )
+            .describe("Array of gap targets to analyse"),
+          delayMs: z
+            .number()
+            .min(0)
+            .max(10000)
+            .optional()
+            .describe(
+              "Delay between API calls in ms (default: 2000). Increase if hitting rate limits.",
+            ),
+        },
+      },
+      async ({ gaps, delayMs }) => {
+        try {
+          return await handleAeoGapReport(
+            this.engine,
+            this.storage,
+            gaps as GapTarget[],
+            delayMs,
+          );
+        } catch (error) {
+          const message =
+            error instanceof Error ? error.message : String(error);
+          return {
+            content: [{ type: "text" as const, text: `Error: ${message}` }],
+            isError: true,
+          };
+        }
+      },
+    );
+
+    this.server.registerTool(
+      "aeo_gap_history",
+      {
+        description: `Retrieve historical gap analysis results. Shows trends over time -- which gaps were confirmed previously, which have since closed, and which are getting worse. Use this to track progress week-over-week.`,
+        inputSchema: {
+          domain: z
+            .string()
+            .optional()
+            .describe(
+              "Filter by your domain (e.g. 'notion.so'). Omit for all domains.",
+            ),
+        },
+      },
+      async ({ domain }) => {
+        try {
+          return await handleAeoGapHistory(this.storage, domain);
+        } catch (error) {
+          const message =
+            error instanceof Error ? error.message : String(error);
+          return {
+            content: [{ type: "text" as const, text: `Error: ${message}` }],
+            isError: true,
+          };
+        }
+      },
+    );
+
+    this.server.registerTool(
+      "aeo_analyse",
+      {
+        description:
+          "Fetch and analyse a single competitor page. Returns page signals (word count, schema types, FAQ, direct answer, etc.) and saves the analysis to local storage. Use this to inspect a specific URL that is beating you on a query.",
+        inputSchema: {
+          competitorUrl: z
+            .string()
+            .url()
+            .describe("Full URL of the competitor page to analyse"),
+          query: z
+            .string()
+            .describe("The query this competitor ranks for"),
+          targetDomain: z
+            .string()
+            .describe("Your domain (e.g. 'acemate.ai')"),
+          citationPosition: z
+            .number()
+            .int()
+            .min(0)
+            .describe("0-based position at which this URL appears in AI citations"),
+        },
+      },
+      async ({ competitorUrl, query, targetDomain, citationPosition }) => {
+        try {
+          return await handleAeoAnalyse(
+            this.fetcher,
+            this.storage,
+            competitorUrl,
+            query,
+            targetDomain,
+            citationPosition,
+          );
+        } catch (error) {
+          const message =
+            error instanceof Error ? error.message : String(error);
+          return {
+            content: [{ type: "text" as const, text: `Error: ${message}` }],
+            isError: true,
+          };
+        }
+      },
+    );
+
+    this.server.registerTool(
+      "aeo_recommend",
+      {
+        description:
+          "Run a live AEO check and generate a prioritised list of content recommendations to improve citation chances. Fetches the top competitor pages, analyses their signals, and returns specific actionable tasks ranked by impact.",
+        inputSchema: {
+          query: z
+            .string()
+            .describe("The search query to check and analyse"),
+          targetDomain: z
+            .string()
+            .describe("Your domain (e.g. 'acemate.ai')"),
+          brandName: z
+            .string()
+            .optional()
+            .describe("Your brand name for text matching"),
+          maxCompetitors: z
+            .number()
+            .int()
+            .min(1)
+            .max(5)
+            .optional()
+            .describe(
+              "Max competitor pages to fetch and analyse (default: 3, max: 5)",
+            ),
+        },
+      },
+      async ({ query, targetDomain, brandName, maxCompetitors }) => {
+        try {
+          return await handleAeoRecommend(
+            this.engine,
+            this.fetcher,
+            this.storage,
+            { query, targetDomain, brandName },
+            maxCompetitors,
+          );
+        } catch (error) {
+          const message =
+            error instanceof Error ? error.message : String(error);
+          return {
+            content: [{ type: "text" as const, text: `Error: ${message}` }],
+            isError: true,
+          };
+        }
+      },
+    );
   }
+
   async run() {
     const transport = new StdioServerTransport();
     await this.server.connect(transport);
