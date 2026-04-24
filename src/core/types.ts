@@ -17,3 +17,35 @@ export interface AeoCheckResult {
   competitorUrls: string[]; // If target lost, who won?
   timestamp: string;
 }
+
+export interface GapTarget {
+  query: string;
+  targetDomain: string;
+  brandName?: string;
+  competitorDomains: string[];
+  peecOpportunityScore?: number;
+  peecTopicName?: string;
+  source: "peec" | "manual";
+}
+
+export interface GapAnalysisResult {
+  gapTarget: GapTarget;
+  liveCheck: AeoCheckResult;
+  confirmedGap: boolean;
+  peecConfirmed: boolean;
+  liveConfirmed: boolean;
+  topCompetitorNow: string | null;
+  recommendation: string;
+}
+
+export interface GapReportSummary {
+  targetDomain: string;
+  brandName?: string;
+  totalGapsAnalysed: number;
+  confirmedGaps: number;
+  peecOnlyGaps: number;
+  liveOnlyGaps: number;
+  alreadyFixed: number;
+  results: GapAnalysisResult[];
+  generatedAt: string;
+}
