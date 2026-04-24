@@ -3,7 +3,14 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { PerplexityApi } from "../adapters/PerplexityApi.js";
-import { handleAeoCheck, handleAeoReport, handleAeoHistory } from "./tools.js";
+import {
+  handleAeoCheck,
+  handleAeoReport,
+  handleAeoHistory,
+  handleAeoGapReport,
+  handleAeoGapHistory,
+} from "./tools.js";
+import { GapTarget } from "../core/types.js";
 import { JsonStorage } from "../adapters/JSONStorage.js";
 import { z } from "zod";
 
@@ -112,7 +119,102 @@ export class AeoMcpServer {
         }
       },
     );
+
+    this.server.registerTool(
+      "aeo_gap_report",
+      {
+        description: `Run a live AEO gap analysis. Takes a list of queries where competitors are beating you (from Peec gap data or manual input) and validates each gap live against Perplexity. Returns a prioritised report showing confirmed gaps, emerging gaps, and which gaps are already closing, with specific content recommendations for each confirmed gap.`,
+        inputSchema: {
+          gaps: z
+            .array(
+              z.object({
+                query: z.string().describe("The search query to check"),
+                targetDomain: z
+                  .string()
+                  .describe("Your domain (e.g. 'notion.so')"),
+                brandName: z.string().optional().describe("Your brand name"),
+                competitorDomains: z
+                  .array(z.string())
+                  .describe(
+                    "Competitor domains that Peec found beating you on this query",
+                  ),
+                peecOpportunityScore: z
+                  .number()
+                  .min(0)
+                  .max(1)
+                  .optional()
+                  .describe(
+                    "Opportunity score from Peec (0-1, higher = bigger gap)",
+                  ),
+                peecTopicName: z
+                  .string()
+                  .optional()
+                  .describe("Topic grouping from Peec for organising output"),
+                source: z
+                  .enum(["peec", "manual"])
+                  .describe(
+                    "Whether this gap was identified by Peec or entered manually",
+                  ),
+              }),
+            )
+            .describe("Array of gap targets to analyse"),
+          delayMs: z
+            .number()
+            .min(0)
+            .max(10000)
+            .optional()
+            .describe(
+              "Delay between API calls in ms (default: 2000). Increase if hitting rate limits.",
+            ),
+        },
+      },
+      async ({ gaps, delayMs }) => {
+        try {
+          return await handleAeoGapReport(
+            this.engine,
+            this.storage,
+            gaps as GapTarget[],
+            delayMs,
+          );
+        } catch (error) {
+          const message =
+            error instanceof Error ? error.message : String(error);
+          return {
+            content: [{ type: "text" as const, text: `Error: ${message}` }],
+            isError: true,
+          };
+        }
+      },
+    );
+
+    this.server.registerTool(
+      "aeo_gap_history",
+      {
+        description: `Retrieve historical gap analysis results. Shows trends over time -- which gaps were confirmed previously, which have since closed, and which are getting worse. Use this to track progress week-over-week.`,
+        inputSchema: {
+          domain: z
+            .string()
+            .optional()
+            .describe(
+              "Filter by your domain (e.g. 'notion.so'). Omit for all domains.",
+            ),
+        },
+      },
+      async ({ domain }) => {
+        try {
+          return await handleAeoGapHistory(this.storage, domain);
+        } catch (error) {
+          const message =
+            error instanceof Error ? error.message : String(error);
+          return {
+            content: [{ type: "text" as const, text: `Error: ${message}` }],
+            isError: true,
+          };
+        }
+      },
+    );
   }
+
   async run() {
     const transport = new StdioServerTransport();
     await this.server.connect(transport);

@@ -1,7 +1,62 @@
 import { parseAeoResponse } from "../core/citationParser.js";
-import { AeoCheckResult, TargetConfig } from "../core/types.js";
+import { AeoCheckResult, TargetConfig, GapTarget } from "../core/types.js";
 import { IAnswerEngine } from "../ports/IAnswerEngine.js";
 import { IStorage } from "../ports/IStorage.js";
+import { runGapReport, formatGapReport } from "../core/gapAnalyser.js";
+
+export async function handleAeoGapReport(
+  engine: IAnswerEngine,
+  storage: IStorage,
+  gaps: GapTarget[],
+  delayMs?: number,
+): Promise<{ content: Array<{ type: "text"; text: string }> }> {
+  const summary = await runGapReport(engine, storage, gaps, delayMs);
+  const report = formatGapReport(summary);
+  return { content: [{ type: "text", text: report }] };
+}
+
+export async function handleAeoGapHistory(
+  storage: IStorage,
+  domain?: string,
+): Promise<{ content: Array<{ type: "text"; text: string }> }> {
+  const history = await storage.getGapHistory(domain);
+
+  if (history.length === 0) {
+    return { content: [{ type: "text", text: "No gap history found." }] };
+  }
+
+  // Group by query, keep most recent result per query
+  const byQuery = new Map<string, (typeof history)[number]>();
+  for (const result of history) {
+    const existing = byQuery.get(result.gapTarget.query);
+    if (
+      !existing ||
+      result.liveCheck.timestamp > existing.liveCheck.timestamp
+    ) {
+      byQuery.set(result.gapTarget.query, result);
+    }
+  }
+
+  const label = domain ?? "all domains";
+  const lines = [`Gap History -- ${label} (${byQuery.size} entries)`, ""];
+
+  for (const r of byQuery.values()) {
+    const marker = r.confirmedGap
+      ? "[!!]"
+      : r.liveConfirmed
+        ? "[!]"
+        : r.peecConfirmed
+          ? "[~]"
+          : "[ok]";
+    const date = new Date(r.liveCheck.timestamp).toLocaleDateString();
+    const competitor = r.topCompetitorNow ?? "none";
+    lines.push(
+      `${marker} "${r.gapTarget.query}" -- ${date} -- top competitor: ${competitor}`,
+    );
+  }
+
+  return { content: [{ type: "text", text: lines.join("\n") }] };
+}
 
 export async function handleAeoHistory(
   storage: IStorage,
