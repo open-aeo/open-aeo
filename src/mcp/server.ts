@@ -3,7 +3,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { PerplexityApi } from "../adapters/PerplexityApi.js";
-import { handleAeoCheck, handleAeoReport } from "./tools.js";
+import { handleAeoCheck, handleAeoReport, handleAeoHistory } from "./tools.js";
 import { JsonStorage } from "../adapters/JSONStorage.js";
 import { z } from "zod";
 
@@ -93,21 +93,15 @@ export class AeoMcpServer {
             .string()
             .optional()
             .describe("Filter history by a specific query"),
+          domain: z
+            .string()
+            .optional()
+            .describe("Filter history by target domain"),
         },
       },
-      async ({ query }) => {
+      async ({ query, domain }) => {
         try {
-          const history = await this.storage.getHistory(query);
-          const lines =
-            history.length === 0
-              ? ["No history found."]
-              : history.map(
-                  (r) =>
-                    `${r.cited ? "✅" : "❌"}  "${r.query}" — ${r.targetDomain} — ${new Date(r.timestamp).toLocaleDateString()}`,
-                );
-          return {
-            content: [{ type: "text" as const, text: lines.join("\n") }],
-          };
+          return await handleAeoHistory(this.storage, query, domain);
         } catch (error) {
           const message =
             error instanceof Error ? error.message : String(error);
