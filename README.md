@@ -70,6 +70,8 @@ pnpm install
 pnpm run build
 ```
 
+Replace `/absolute/path/to/open-aeo` in the config below with the actual path where you cloned the repository. On macOS this is typically `/Users/yourname/open-aeo`. On Windows use double backslashes or forward slashes.
+
 ## Claude Desktop setup
 
 Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
@@ -105,37 +107,40 @@ Ask Claude:
 
 ## Architecture
 
+The codebase follows a port/adapter pattern. Interfaces define the contract;
+implementations can be swapped without changing any tool logic.
+
 ```
 src/
-  index.ts
+  index.ts                   entry point, reads env vars, starts the MCP server
   core/
-    types.ts            shared types (TargetConfig, AeoCheckResult, GapTarget,
-                        GapAnalysisResult, GapReportSummary)
-    citationParser.ts   pure citation detection logic
-    gapAnalyser.ts      gap analysis engine (analyseGap, runGapReport, formatGapReport)
+    types.ts                 all shared interfaces
+    citationParser.ts        detects citations in engine responses
+    contentAnalyser.ts       fetches competitor pages, generates recommendation tasks
   ports/
-    IAnswerEngine.ts    interface: search()
-    IStorage.ts         interface: save(), getHistory(), saveGapResult(), getGapHistory()
+    IAnswerEngine.ts         interface for answer engine adapters
+    IStorage.ts              interface for storage adapters
   adapters/
-    PerplexityApi.ts    implements IAnswerEngine
-    JSONStorage.ts      implements IStorage (stores to ~/.open-aeo/)
+    PerplexityApi.ts         answer engine: Perplexity via sonar model
+    JSONStorage.ts           storage: writes to ~/.open-aeo/
+    PageFetcher.ts           fetches competitor URLs, extracts page signals
   mcp/
-    tools.ts            all tool handler functions
-    server.ts           MCP server, tool registration
+    tools.ts                 tool handler functions
+    server.ts                MCP server, tool registration
 ```
 
-Built with the [port/adapter pattern](https://en.wikipedia.org/wiki/Hexagonal_architecture_(software)) —
-swapping Perplexity for another engine requires changing one file.
+## Tools
 
-## Tools reference
+open-aeo exposes five tools via MCP. Connect it to any MCP-compatible client such as
+Claude Desktop or Cursor and the tools appear automatically.
 
 | Tool | Description |
 |------|-------------|
-| `aeo_check` | Live citation check for a single query |
-| `aeo_report` | Batch citation check across multiple queries |
-| `aeo_history` | View historical citation data, filterable by query and domain |
-| `aeo_gap_report` | Gap analysis: validates Peec gaps live, returns prioritised recommendations |
-| `aeo_gap_history` | Historical gap trends — track which gaps are closing over time |
+| `aeo_check` | Run a live citation check for one query. Returns whether your domain or brand was cited, its position, and which competitors appeared instead. |
+| `aeo_report` | Batch citation check across multiple queries. Returns a summary and per-query results. Adds a configurable delay between requests to avoid rate limits. |
+| `aeo_history` | Retrieve past citation check results from local storage. Filterable by query and domain. |
+| `aeo_analyse` | Fetch and analyse a specific competitor URL. Returns a structural breakdown of the page — FAQ sections, schema markup, content depth, freshness signals — so you understand why it was cited. |
+| `aeo_recommend` | Run a fresh citation check for a query, then automatically fetch and analyse the competitor pages that appeared instead of you. Returns a prioritised list of specific content and schema tasks to improve your citation chances. |
 
 ## Data storage
 
@@ -145,6 +150,13 @@ All data is stored locally at `~/.open-aeo/`. No cloud, no telemetry.
 - `~/.open-aeo/gap-history.json` — gap analysis history
 
 Override the storage location with `OPEN_AEO_STORE_PATH` (must be an absolute path).
+
+## Environment variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `PERPLEXITY_API_KEY` | Yes | Your Perplexity API key. Get one at https://www.perplexity.ai/api-platform |
+| `OPEN_AEO_STORE_PATH` | No | Custom absolute path for history.json. Defaults to `~/.open-aeo/history.json` |
 
 ## Contributing
 
