@@ -1,8 +1,18 @@
 import { parseAeoResponse } from "../core/citationParser.js";
-import { AeoCheckResult, TargetConfig, GapTarget } from "../core/types.js";
+import {
+  AeoCheckResult,
+  GapTarget,
+  RecommendationReport,
+  TargetConfig,
+} from "../core/types.js";
 import { IAnswerEngine } from "../ports/IAnswerEngine.js";
 import { IStorage } from "../ports/IStorage.js";
 import { runGapReport, formatGapReport } from "../core/gapAnalyser.js";
+import {
+  analyseCompetitor,
+  buildRecommendationReport,
+} from "../core/contentAnalyser.js";
+import { PageFetcher } from "../adapters/PageFetcher.js";
 
 export async function handleAeoGapReport(
   engine: IAnswerEngine,
@@ -83,7 +93,7 @@ export async function handleAeoHistory(
   };
 }
 
-async function runSingleCheck(
+export async function runSingleCheck(
   engine: IAnswerEngine,
   storage: IStorage,
   config: TargetConfig,
@@ -124,6 +134,116 @@ export async function handleAeoCheck(
       },
     ],
   };
+}
+
+function formatRecommendationReport(report: RecommendationReport): string {
+  const citedLine = report.yourCited
+    ? `Cited at position ${report.yourPosition ?? "?"}`
+    : "Not cited";
+
+  const lines: string[] = [
+    `Recommendation Report`,
+    `Query:         "${report.query}"`,
+    `Target Domain: ${report.targetDomain}`,
+    `Your Status:   ${citedLine}`,
+    `Competitors Analysed: ${report.competitors.length}`,
+    `Generated:     ${new Date(report.generatedAt).toLocaleString()}`,
+    ``,
+  ];
+
+  if (report.competitors.length > 0) {
+    lines.push(`Competitor Pages:`);
+    for (const c of report.competitors) {
+      const status = c.signals.fetchError
+        ? `fetch error: ${c.signals.fetchError}`
+        : `${c.signals.wordCount ?? "?"} words, ${c.signals.headingCount ?? "?"} headings`;
+      lines.push(`  ${c.citationPosition + 1}. ${c.competitorDomain} -- ${status}`);
+    }
+    lines.push(``);
+  }
+
+  if (report.tasks.length === 0) {
+    lines.push(`No specific recommendations generated.`);
+  } else {
+    lines.push(`Recommended Actions (${report.tasks.length}):`);
+    lines.push(``);
+    for (const task of report.tasks) {
+      const marker =
+        task.priority === "high"
+          ? "[HIGH]"
+          : task.priority === "medium"
+            ? "[MED] "
+            : "[LOW] ";
+      lines.push(`${marker} ${task.title}`);
+      lines.push(`       Category: ${task.category}`);
+      lines.push(`       ${task.description}`);
+      lines.push(`       Evidence: ${task.competitorEvidence}`);
+      lines.push(``);
+    }
+  }
+
+  return lines.join("\n");
+}
+
+export async function handleAeoAnalyse(
+  fetcher: PageFetcher,
+  storage: IStorage,
+  competitorUrl: string,
+  query: string,
+  targetDomain: string,
+  citationPosition: number,
+): Promise<{ content: Array<{ type: "text"; text: string }> }> {
+  const analysis = await analyseCompetitor(
+    fetcher,
+    query,
+    targetDomain,
+    competitorUrl,
+    citationPosition,
+  );
+  await storage.saveCompetitorAnalysis(analysis);
+
+  const statusLine = analysis.signals.fetchError
+    ? `Fetch failed: ${analysis.signals.fetchError}`
+    : `Fetched OK`;
+
+  const lines = [
+    `Competitor Analysis`,
+    `URL:           ${analysis.competitorUrl}`,
+    `Domain:        ${analysis.competitorDomain}`,
+    `Query:         "${analysis.query}"`,
+    `Position:      ${analysis.citationPosition + 1}`,
+    `Status:        ${statusLine}`,
+    ``,
+    `Page Signals:`,
+    `  Word count:       ${analysis.signals.wordCount ?? "N/A"}`,
+    `  Heading count:    ${analysis.signals.headingCount ?? "N/A"}`,
+    `  FAQ section:      ${analysis.signals.hasFaqSection ? "yes" : "no"}`,
+    `  FAQ schema:       ${analysis.signals.hasFaqSchema ? "yes" : "no"}`,
+    `  Article schema:   ${analysis.signals.hasArticleSchema ? "yes" : "no"}`,
+    `  HowTo schema:     ${analysis.signals.hasHowToSchema ? "yes" : "no"}`,
+    `  Direct answer:    ${analysis.signals.hasDirectAnswer ? "yes" : "no"}`,
+    `  Comparison table: ${analysis.signals.hasComparisonTable ? "yes" : "no"}`,
+    `  Last modified:    ${analysis.signals.hasLastModifiedDate ? "yes" : "no"}`,
+    `  Meta description: ${analysis.signals.metaDescription ?? "none"}`,
+  ];
+
+  if (analysis.signals.schemaTypes.length > 0) {
+    lines.push(`  Schema types:     ${analysis.signals.schemaTypes.join(", ")}`);
+  }
+
+  return { content: [{ type: "text", text: lines.join("\n") }] };
+}
+
+export async function handleAeoRecommend(
+  engine: IAnswerEngine,
+  fetcher: PageFetcher,
+  storage: IStorage,
+  config: TargetConfig,
+  maxCompetitors = 3,
+): Promise<{ content: Array<{ type: "text"; text: string }> }> {
+  const checkResult = await runSingleCheck(engine, storage, config);
+  const report = await buildRecommendationReport(fetcher, checkResult, maxCompetitors);
+  return { content: [{ type: "text", text: formatRecommendationReport(report) }] };
 }
 
 export async function handleAeoReport(

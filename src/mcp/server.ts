@@ -9,19 +9,24 @@ import {
   handleAeoHistory,
   handleAeoGapReport,
   handleAeoGapHistory,
+  handleAeoAnalyse,
+  handleAeoRecommend,
 } from "./tools.js";
 import { GapTarget } from "../core/types.js";
 import { JsonStorage } from "../adapters/JSONStorage.js";
+import { PageFetcher } from "../adapters/PageFetcher.js";
 import { z } from "zod";
 
 export class AeoMcpServer {
   private server: McpServer;
   private engine: PerplexityApi;
   private storage: JsonStorage;
+  private fetcher: PageFetcher;
 
   constructor(apiKey: string) {
     this.engine = new PerplexityApi(apiKey);
     this.storage = new JsonStorage();
+    this.fetcher = new PageFetcher();
     this.server = new McpServer({ name: "open-aeo", version: "1.0.0" });
     this.setupHandlers();
   }
@@ -203,6 +208,97 @@ export class AeoMcpServer {
       async ({ domain }) => {
         try {
           return await handleAeoGapHistory(this.storage, domain);
+        } catch (error) {
+          const message =
+            error instanceof Error ? error.message : String(error);
+          return {
+            content: [{ type: "text" as const, text: `Error: ${message}` }],
+            isError: true,
+          };
+        }
+      },
+    );
+
+    this.server.registerTool(
+      "aeo_analyse",
+      {
+        description:
+          "Fetch and analyse a single competitor page. Returns page signals (word count, schema types, FAQ, direct answer, etc.) and saves the analysis to local storage. Use this to inspect a specific URL that is beating you on a query.",
+        inputSchema: {
+          competitorUrl: z
+            .string()
+            .url()
+            .describe("Full URL of the competitor page to analyse"),
+          query: z
+            .string()
+            .describe("The query this competitor ranks for"),
+          targetDomain: z
+            .string()
+            .describe("Your domain (e.g. 'acemate.ai')"),
+          citationPosition: z
+            .number()
+            .int()
+            .min(0)
+            .describe("0-based position at which this URL appears in AI citations"),
+        },
+      },
+      async ({ competitorUrl, query, targetDomain, citationPosition }) => {
+        try {
+          return await handleAeoAnalyse(
+            this.fetcher,
+            this.storage,
+            competitorUrl,
+            query,
+            targetDomain,
+            citationPosition,
+          );
+        } catch (error) {
+          const message =
+            error instanceof Error ? error.message : String(error);
+          return {
+            content: [{ type: "text" as const, text: `Error: ${message}` }],
+            isError: true,
+          };
+        }
+      },
+    );
+
+    this.server.registerTool(
+      "aeo_recommend",
+      {
+        description:
+          "Run a live AEO check and generate a prioritised list of content recommendations to improve citation chances. Fetches the top competitor pages, analyses their signals, and returns specific actionable tasks ranked by impact.",
+        inputSchema: {
+          query: z
+            .string()
+            .describe("The search query to check and analyse"),
+          targetDomain: z
+            .string()
+            .describe("Your domain (e.g. 'acemate.ai')"),
+          brandName: z
+            .string()
+            .optional()
+            .describe("Your brand name for text matching"),
+          maxCompetitors: z
+            .number()
+            .int()
+            .min(1)
+            .max(5)
+            .optional()
+            .describe(
+              "Max competitor pages to fetch and analyse (default: 3, max: 5)",
+            ),
+        },
+      },
+      async ({ query, targetDomain, brandName, maxCompetitors }) => {
+        try {
+          return await handleAeoRecommend(
+            this.engine,
+            this.fetcher,
+            this.storage,
+            { query, targetDomain, brandName },
+            maxCompetitors,
+          );
         } catch (error) {
           const message =
             error instanceof Error ? error.message : String(error);
