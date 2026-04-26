@@ -23,7 +23,7 @@ YouTube appeared **60 times** across all competitor URL arrays — the most of a
 
 10 cases where a brand was absent from Perplexity's citations, with the page signals of the competitor that displaced it.
 
-**[Open interactive chart →](competitor-signal-analysis.html)**
+**[Open interactive chart →](competitor-signal-analysis.html ':ignore')**
 
 | # | Brand missing | Query | Competitor that won | Words | H-tags | FAQ | FAQ schema | Article schema | Comp table | Updated |
 |---|--------------|-------|-------------------|-------|--------|-----|------------|----------------|------------|---------|
@@ -48,8 +48,8 @@ paymoapp.com's 17,893-word roundup displaced both Linear and Plane with no schem
 
 Which domains appeared most often across all competitor citation arrays, broken down by query category.
 
-**[Open bar chart (static, 4-panel) →](competitor-domain-frequency.html)**
-**[Open bar chart (interactive tabs, with raw data) →](competitor-domain-frequency-interactive.html)**
+**[Open bar chart (static, 4-panel) →](competitor-domain-frequency.html ':ignore')**
+**[Open bar chart (interactive tabs, with raw data) →](competitor-domain-frequency-interactive.html ':ignore')**
 
 ### AI coding (5 queries · 25 checks)
 
