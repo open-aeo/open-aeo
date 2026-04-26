@@ -1,0 +1,7 @@
+- [Getting started](getting-started.md)
+- [Tool reference](tools.md)
+- [How citation detection works](how-citation-detection-works.md)
+- [How content analysis works](how-content-analysis-works.md)
+- [Storage reference](storage.md)
+- [Study data and evidence](evidence.md)
+- [Contributing](contributing.md)
