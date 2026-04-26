@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Competitor domain frequency (interactive) — open-aeo study</title>
+</head>
+<body>
+  <div style="padding:24px 32px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+    <h1 style="font-size:18px;font-weight:600;margin:0 0 4px;">Competitor domain frequency by category</h1>
+    <p style="font-size:13px;color:#656d76;margin:0 0 20px;">Top 10 domains from all competitor citation URLs across 4 categories, 20 queries, 105 checks. Click a tab to switch category.</p>
+  </div>
+<style>
+  :root {
+    --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    --color-background-primary: #ffffff;
+    --color-background-secondary: #f6f8fa;
+    --color-text-primary: #1f2328;
+    --color-text-secondary: #656d76;
+    --color-border-secondary: #d0d7de;
+  }
+  body { font-family: var(--font-sans); background: var(--color-background-primary); color: var(--color-text-primary); margin: 0; }
+  .wrap { padding: 0 2rem 2rem; }
+  .tabs { display: flex; gap: 4px; margin-bottom: 14px; flex-wrap: wrap; }
+  .tab { padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 500; cursor: pointer; border: 0.5px solid var(--color-border-secondary); background: var(--color-background-primary); color: var(--color-text-secondary); transition: all 0.15s; }
+  .tab.active { color: #fff; border-color: transparent; }
+  .tab.ai.active   { background: #534AB7; }
+  .tab.dep.active  { background: #1D9E75; }
+  .tab.db.active   { background: #378ADD; }
+  .tab.pm.active   { background: #D85A30; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+  .meta { font-size: 11px; color: var(--color-text-secondary); margin-bottom: 12px; }
+  .row { display: flex; align-items: center; gap: 10px; margin-bottom: 7px; }
+  .rank { font-size: 11px; color: var(--color-text-secondary); width: 18px; text-align: right; flex-shrink: 0; }
+  .domain { font-size: 12px; color: var(--color-text-primary); width: 200px; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bar-wrap { flex: 1; background: var(--color-background-secondary); border-radius: 3px; height: 12px; overflow: hidden; }
+  .bar { height: 12px; border-radius: 3px; transition: width 0.4s ease; }
+  .ai-bar  { background: #7F77DD; }
+  .dep-bar { background: #1D9E75; }
+  .db-bar  { background: #378ADD; }
+  .pm-bar  { background: #D85A30; }
+  .count { font-size: 12px; font-weight: 500; width: 28px; text-align: right; flex-shrink: 0; color: var(--color-text-primary); }
+  .pct { font-size: 10px; color: var(--color-text-secondary); width: 36px; text-align: right; flex-shrink: 0; }
+  .divider { border: none; border-top: 0.5px solid var(--color-border-tertiary); margin: 14px 0; }
+  .insight { border-radius: 8px; padding: 10px 14px; font-size: 12px; line-height: 1.6; margin-top: 10px; }
+  .ai-insight  { background: #EEEDFE; color: #3C3489; }
+  .dep-insight { background: #E1F5EE; color: #085041; }
+  .db-insight  { background: #E6F1FB; color: #0C447C; }
+  .pm-insight  { background: #FAECE7; color: #4A1B0C; }
+</style>
+
+<div class="wrap">
+  <h2 class="sr-only">Top competitor domains by category from AEO history JSON</h2>
+  <div class="tabs">
+    <div class="tab ai active" onclick="show('ai')">🤖 AI Coding</div>
+    <div class="tab dep" onclick="show('dep')">🚀 Deployment</div>
+    <div class="tab db"  onclick="show('db')">🗄️ Databases</div>
+    <div class="tab pm"  onclick="show('pm')">📋 Project Tracking</div>
+  </div>
+
+  <!-- AI Coding -->
+  <div class="panel active" id="panel-ai">
+    <div class="meta">5 queries · 25 records · domains extracted from all competitorUrls arrays</div>
+    <div id="rows-ai"></div>
+    <div class="insight ai-insight" id="insight-ai"></div>
+  </div>
+
+  <!-- Deployment -->
+  <div class="panel" id="panel-dep">
+    <div class="meta">5 queries · 35 records (includes duplicate batch) · domains extracted from all competitorUrls arrays</div>
+    <div id="rows-dep"></div>
+    <div class="insight dep-insight" id="insight-dep"></div>
+  </div>
+
+  <!-- Databases -->
+  <div class="panel" id="panel-db">
+    <div class="meta">5 queries · 25 records · domains extracted from all competitorUrls arrays</div>
+    <div id="rows-db"></div>
+    <div class="insight db-insight" id="insight-db"></div>
+  </div>
+
+  <!-- Project Tracking -->
+  <div class="panel" id="panel-pm">
+    <div class="meta">5 queries · 50 records (includes duplicate batch) · domains extracted from all competitorUrls arrays</div>
+    <div id="rows-pm"></div>
+    <div class="insight pm-insight" id="insight-pm"></div>
+  </div>
+</div>
+
+<script>
+// ── raw data: all competitorUrls grouped by category ──────────────────────
+const data = {
+  ai: [
+    // best AI coding assistant for VS Code (×5 brands)
+    "https://www.secondtalent.com/resources/ai-code-assistants-for-visual-studio-code/",
+    "https://axify.io/blog/the-best-ai-coding-assistants-a-full-comparison-of-17-tools",
+    "https://code.visualstudio.com/docs/intelligentapps/overview",
+    "https://www.youtube.com/watch?v=NAWcnIebQ-o",
+    "https://blog.n8n.io/best-ai-for-coding/",
+    "https://dev.to/alifar/6-must-try-vs-code-ai-tools-every-developer-should-know-in-2025-bl6",
+    "https://learn.microsoft.com/en-us/visualstudio/ide/ai-assisted-development-visual-studio?view=visualstudio",
+    "https://www.secondtalent.com/resources/ai-code-assistants-for-visual-studio-code/",
+    "https://axify.io/blog/the-best-ai-coding-assistants-a-full-comparison-of-17-tools",
+    "https://code.visualstudio.com/docs/intelligentapps/overview",
+    "https://www.youtube.com/watch?v=NAWcnIebQ-o",
+    "https://blog.n8n.io/best-ai-for-coding/",
+    "https://www.jetbrains.com/aia-vscode/",
+    "https://dev.to/alifar/6-must-try-vs-code-ai-tools-every-developer-should-know-in-2025-bl6",
+    "https://www.secondtalent.com/resources/ai-code-assistants-for-visual-studio-code/",
+    "https://axify.io/blog/the-best-ai-coding-assistants-a-full-comparison-of-17-tools",
+    "https://code.visualstudio.com/docs/intelligentapps/overview",
+    "https://www.youtube.com/watch?v=NAWcnIebQ-o",
+    "https://blog.n8n.io/best-ai-for-coding/",
+    "https://www.jetbrains.com/aia-vscode/",
+    "https://dev.to/alifar/6-must-try-vs-code-ai-tools-every-developer-should-know-in-2025-bl6",
+    "https://www.secondtalent.com/resources/ai-code-assistants-for-visual-studio-code/",
+    "https://axify.io/blog/the-best-ai-coding-assistants-a-full-comparison-of-17-tools",
+    "https://code.visualstudio.com/docs/intelligentapps/overview",
+    "https://www.youtube.com/watch?v=tCGju2JB5Fw",
+    "https://blog.n8n.io/best-ai-for-coding/",
+    "https://www.jetbrains.com/aia-vscode/",
+    "https://www.secondtalent.com/resources/ai-code-assistants-for-visual-studio-code/",
+    "https://axify.io/blog/the-best-ai-coding-assistants-a-full-comparison-of-17-tools",
+    "https://code.visualstudio.com/docs/intelligentapps/overview",
+    "https://www.youtube.com/watch?v=NAWcnIebQ-o",
+    "https://blog.n8n.io/best-ai-for-coding/",
+    "https://www.jetbrains.com/aia-vscode/",
+    "https://dev.to/alifar/6-must-try-vs-code-ai-tools-every-developer-should-know-in-2025-bl6",
+    // which AI coding tool writes the best code completions (×5)
+    "https://pensero.ai/blog/code-completion-tools",
+    "https://techhq.com/news/ai-tools-for-code-completion/",
+    "https://axify.io/blog/the-best-ai-coding-assistants-a-full-comparison-of-17-tools",
+    "https://blog.n8n.io/best-ai-for-coding/",
+    "https://www.figma.com/resource-library/ai-coding-tools/",
+    "https://www.qodo.ai/blog/best-ai-coding-assistant-tools/",
+    "https://zapier.com/blog/ai-coding-tools/",
+    "https://pensero.ai/blog/code-completion-tools",
+    "https://techhq.com/news/ai-tools-for-code-completion/",
+    "https://blog.n8n.io/best-ai-for-coding/",
+    "https://www.augmentcode.com/tools/13-best-ai-coding-tools-for-complex-codebases",
+    "https://www.figma.com/resource-library/ai-coding-tools/",
+    "https://zapier.com/blog/ai-coding-tools/",
+    "https://www.qodo.ai/blog/best-ai-coding-assistant-tools/",
+    "https://pensero.ai/blog/code-completion-tools",
+    "https://techhq.com/news/ai-tools-for-code-completion/",
+    "https://blog.n8n.io/best-ai-for-coding/",
+    "https://www.augmentcode.com/tools/13-best-ai-coding-tools-for-complex-codebases",
+    "https://zapier.com/blog/ai-coding-tools/",
+    "https://www.qodo.ai/blog/best-ai-coding-assistant-tools/",
+    "https://github.com/sourcegraph/awesome-code-ai",
+    "https://pensero.ai/blog/code-completion-tools",
+    "https://techhq.com/news/ai-tools-for-code-completion/",
+    "https://blog.n8n.io/best-ai-for-coding/",
+    "https://www.augmentcode.com/tools/13-best-ai-coding-tools-for-complex-codebases",
+    "https://zapier.com/blog/ai-coding-tools/",
+    "https://www.qodo.ai/blog/best-ai-coding-assistant-tools/",
+    "https://github.com/sourcegraph/awesome-code-ai",
+    "https://pensero.ai/blog/code-completion-tools",
+    "https://techhq.com/news/ai-tools-for-code-completion/",
+    "https://blog.n8n.io/best-ai-for-coding/",
+    "https://www.augmentcode.com/tools/13-best-ai-coding-tools-for-complex-codebases",
+    "https://zapier.com/blog/ai-coding-tools/",
+    "https://www.qodo.ai/blog/best-ai-coding-assistant-tools/",
+    "https://github.com/sourcegraph/awesome-code-ai",
+    // Cursor vs GitHub Copilot (×5)
+    "https://www.builder.io/blog/cursor-vs-github-copilot",
+    "https://zapier.com/blog/cursor-vs-copilot/",
+    "https://community.latenode.com/t/cursor-vs-github-copilot-2025-same-functionality-but-double-the-cost/20812",
+    "https://uibakery.io/blog/cursor-ai-vs-copilot",
+    "https://github.com/orgs/community/discussions/161450",
+    "https://javascript.plainenglish.io/github-copilot-vs-cursor-vs-claude-i-tested-all-ai-coding-tools-for-30-days-the-results-will-c66a9f56db05",
+    "https://www.builder.io/blog/cursor-vs-github-copilot",
+    "https://www.digitalocean.com/resources/articles/github-copilot-vs-cursor",
+    "https://community.latenode.com/t/cursor-vs-github-copilot-2025-same-functionality-but-double-the-cost/20812",
+    "https://uibakery.io/blog/cursor-ai-vs-copilot",
+    "https://javascript.plainenglish.io/github-copilot-vs-cursor-vs-claude-i-tested-all-ai-coding-tools-for-30-days-the-results-will-c66a9f56db05",
+    "https://www.builder.io/blog/cursor-vs-github-copilot",
+    "https://www.digitalocean.com/resources/articles/github-copilot-vs-cursor",
+    "https://community.latenode.com/t/cursor-vs-github-copilot-2025-same-functionality-but-double-the-cost/20812",
+    "https://uibakery.io/blog/cursor-ai-vs-copilot",
+    "https://github.com/orgs/community/discussions/161450",
+    "https://javascript.plainenglish.io/github-copilot-vs-cursor-vs-claude-i-tested-all-ai-coding-tools-for-30-days-the-results-will-c66a9f56db05",
+    "https://www.builder.io/blog/cursor-vs-github-copilot",
+    "https://www.digitalocean.com/resources/articles/github-copilot-vs-cursor",
+    "https://community.latenode.com/t/cursor-vs-github-copilot-2025-same-functionality-but-double-the-cost/20812",
+    "https://uibakery.io/blog/cursor-ai-vs-copilot",
+    "https://github.com/orgs/community/discussions/161450",
+    "https://javascript.plainenglish.io/github-copilot-vs-cursor-vs-claude-i-tested-all-ai-coding-tools-for-30-days-the-results-will-c66a9f56db05",
+    "https://www.builder.io/blog/cursor-vs-github-copilot",
+    "https://zapier.com/blog/cursor-vs-copilot/",
+    "https://community.latenode.com/t/cursor-vs-github-copilot-2025-same-functionality-but-double-the-cost/20812",
+    "https://uibakery.io/blog/cursor-ai-vs-copilot",
+    "https://github.com/orgs/community/discussions/161450",
+    "https://javascript.plainenglish.io/github-copilot-vs-cursor-vs-claude-i-tested-all-ai-coding-tools-for-30-days-the-results-will-c66a9f56db05",
+    // best AI tool for code review (×5)
+    "https://blog.logrocket.com/ai-code-review-tools-2025/",
+    "https://www.augmentcode.com/tools/open-source-ai-code-review-tools-worth-trying",
+    "https://dev.to/heraldofsolace/the-6-best-ai-code-review-tools-for-pull-requests-in-2025-4n43",
+    "https://www.youtube.com/watch?v=JmraS29Kqgs",
+    "https://coderabbit.ai",
+    "https://www.getpanto.ai/blog/best-ai-code-review-tools",
+    "https://www.youtube.com/watch?v=6EKzBVblQjs",
+    "https://www.youtube.com/watch?v=wmmMYFVNxA0",
+    "https://blog.logrocket.com/ai-code-review-tools-2025/",
+    "https://www.augmentcode.com/tools/open-source-ai-code-review-tools-worth-trying",
+    "https://dev.to/heraldofsolace/the-6-best-ai-code-review-tools-for-pull-requests-in-2025-4n43",
+    "https://www.youtube.com/watch?v=JmraS29Kqgs",
+    "https://coderabbit.ai",
+    "https://www.getpanto.ai/blog/best-ai-code-review-tools",
+    "https://www.youtube.com/watch?v=6EKzBVblQjs",
+    "https://www.youtube.com/watch?v=wmmMYFVNxA0",
+    "https://blog.logrocket.com/ai-code-review-tools-2025/",
+    "https://www.augmentcode.com/tools/open-source-ai-code-review-tools-worth-trying",
+    "https://dev.to/heraldofsolace/the-6-best-ai-code-review-tools-for-pull-requests-in-2025-4n43",
+    "https://www.youtube.com/watch?v=JmraS29Kqgs",
+    "https://coderabbit.ai",
+    "https://www.getpanto.ai/blog/best-ai-code-review-tools",
+    "https://www.youtube.com/watch?v=6EKzBVblQjs",
+    "https://www.youtube.com/watch?v=wmmMYFVNxA0",
+    "https://blog.logrocket.com/ai-code-review-tools-2025/",
+    "https://www.augmentcode.com/tools/open-source-ai-code-review-tools-worth-trying",
+    "https://dev.to/heraldofsolace/the-6-best-ai-code-review-tools-for-pull-requests-in-2025-4n43",
+    "https://www.youtube.com/watch?v=JmraS29Kqgs",
+    "https://coderabbit.ai",
+    "https://www.getpanto.ai/blog/best-ai-code-review-tools",
+    "https://www.youtube.com/watch?v=6EKzBVblQjs",
+    "https://www.youtube.com/watch?v=oQ5aBwweNkA",
+    "https://blog.logrocket.com/ai-code-review-tools-2025/",
+    "https://www.augmentcode.com/tools/open-source-ai-code-review-tools-worth-trying",
+    "https://dev.to/heraldofsolace/the-6-best-ai-code-review-tools-for-pull-requests-in-2025-4n43",
+    "https://www.youtube.com/watch?v=JmraS29Kqgs",
+    "https://coderabbit.ai",
+    "https://www.getpanto.ai/blog/best-ai-code-review-tools",
+    "https://www.youtube.com/watch?v=6EKzBVblQjs",
+    "https://www.youtube.com/watch?v=oQ5aBwweNkA",
+    // free alternative to GitHub Copilot (×5)
+    "https://marcolenzo.eu/codeium-the-best-github-copilot-free-alternative/",
+    "https://www.youtube.com/watch?v=2MChz7BwEDc",
+    "https://www.augmentcode.com/tools/top-github-copilot-alternatives",
+    "https://bito.ai/blog/free-github-copilot-alternatives-for-vs-code/",
+    "https://www.digitalocean.com/resources/articles/github-copilot-alternatives",
+    "https://www.tabnine.com/blog/github-copilot-alternatives/",
+    "https://marcolenzo.eu/codeium-the-best-github-copilot-free-alternative/",
+    "https://www.youtube.com/watch?v=2MChz7BwEDc",
+    "https://www.augmentcode.com/tools/top-github-copilot-alternatives",
+    "https://bito.ai/blog/free-github-copilot-alternatives-for-vs-code/",
+    "https://gpustack.ai/building-free-github-copilot-alternative-with-continue-and-gpustack/",
+    "https://www.digitalocean.com/resources/articles/github-copilot-alternatives",
+    "https://marcolenzo.eu/codeium-the-best-github-copilot-free-alternative/",
+    "https://www.youtube.com/watch?v=2MChz7BwEDc",
+    "https://www.augmentcode.com/tools/top-github-copilot-alternatives",
+    "https://bito.ai/blog/free-github-copilot-alternatives-for-vs-code/",
+    "https://www.digitalocean.com/resources/articles/github-copilot-alternatives",
+    "https://www.tabnine.com/blog/github-copilot-alternatives/",
+    "https://marcolenzo.eu/codeium-the-best-github-copilot-free-alternative/",
+    "https://www.youtube.com/watch?v=2MChz7BwEDc",
+    "https://www.augmentcode.com/tools/top-github-copilot-alternatives",
+    "https://bito.ai/blog/free-github-copilot-alternatives-for-vs-code/",
+    "https://www.digitalocean.com/resources/articles/github-copilot-alternatives",
+    "https://www.youtube.com/watch?v=2MChz7BwEDc",
+    "https://marcolenzo.eu/codeium-the-best-github-copilot-free-alternative/",
+    "https://www.augmentcode.com/tools/top-github-copilot-alternatives",
+    "https://www.f22labs.com/blogs/14-free-github-copilot-alternatives-for-vs-code-in-2025/",
+    "https://www.codeant.ai/blogs/github-copilot-alternatives-for-vs-code",
+    "https://www.digitalocean.com/resources/articles/github-copilot-alternatives",
+    "https://www.tabnine.com/blog/github-copilot-alternatives/",
+  ],
+  dep: [
+    // best platform to deploy Next.js (×10 — 2 batches × 5 brands)
+    "https://dev.to/ethanleetech/best-8-deployment-and-hosting-for-nextjs-dip",
+    "https://www.digitalocean.com/solutions/nextjs-hosting",
+    "https://nextjstemplates.com/blog/best-nextjs-hosting",
+    "https://www.youtube.com/watch?v=DXfsYbEYHtI",
+    "https://nextjs.org/docs/pages/getting-started/deploying",
+    "https://www.netlify.com/with/nextjs/",
+    "https://dev.to/ethanleetech/best-8-deployment-and-hosting-for-nextjs-dip",
+    "https://www.digitalocean.com/solutions/nextjs-hosting",
+    "https://nextjstemplates.com/blog/best-nextjs-hosting",
+    "https://www.youtube.com/watch?v=DXfsYbEYHtI",
+    "https://nextjs.org/docs/pages/getting-started/deploying",
+    "https://vercel.com/frameworks/nextjs",
+    "https://dev.to/ethanleetech/best-8-deployment-and-hosting-for-nextjs-dip",
+    "https://www.digitalocean.com/solutions/nextjs-hosting",
+    "https://nextjstemplates.com/blog/best-nextjs-hosting",
+    "https://www.youtube.com/watch?v=DXfsYbEYHtI",
+    "https://nextjs.org/docs/pages/getting-started/deploying",
+    "https://vercel.com/frameworks/nextjs",
+    "https://www.netlify.com/with/nextjs/",
+    "https://dev.to/ethanleetech/best-8-deployment-and-hosting-for-nextjs-dip",
+    "https://www.digitalocean.com/solutions/nextjs-hosting",
+    "https://www.youtube.com/watch?v=DXfsYbEYHtI",
+    "https://nextjstemplates.com/blog/best-nextjs-hosting",
+    "https://nextjs.org/docs/pages/getting-started/deploying",
+    "https://vercel.com/frameworks/nextjs",
+    "https://docs.cloud.google.com/run/docs/quickstarts/frameworks/deploy-nextjs-service",
+    "https://dev.to/ethanleetech/best-8-deployment-and-hosting-for-nextjs-dip",
+    "https://www.digitalocean.com/solutions/nextjs-hosting",
+    "https://nextjstemplates.com/blog/best-nextjs-hosting",
+    "https://www.youtube.com/watch?v=DXfsYbEYHtI",
+    "https://nextjs.org/docs/pages/getting-started/deploying",
+    "https://vercel.com/frameworks/nextjs",
+    "https://www.netlify.com/with/nextjs/",
+    // batch 2
+    "https://dev.to/ethanleetech/best-8-deployment-and-hosting-for-nextjs-dip",
+    "https://www.digitalocean.com/solutions/nextjs-hosting",
+    "https://www.youtube.com/watch?v=DXfsYbEYHtI",
+    "https://nextjstemplates.com/blog/best-nextjs-hosting",
+    "https://nextjs.org/docs/pages/getting-started/deploying",
+    "https://render.com/docs/deploy-nextjs-app",
+    "https://dev.to/ethanleetech/best-8-deployment-and-hosting-for-nextjs-dip",
+    "https://www.digitalocean.com/solutions/nextjs-hosting",
+    "https://nextjstemplates.com/blog/best-nextjs-hosting",
+    "https://www.youtube.com/watch?v=DXfsYbEYHtI",
+    "https://nextjs.org/docs/pages/getting-started/deploying",
+    "https://vercel.com/frameworks/nextjs",
+    "https://dev.to/ethanleetech/best-8-deployment-and-hosting-for-nextjs-dip",
+    "https://www.digitalocean.com/solutions/nextjs-hosting",
+    "https://nextjstemplates.com/blog/best-nextjs-hosting",
+    "https://www.youtube.com/watch?v=DXfsYbEYHtI",
+    "https://nextjs.org/docs/pages/getting-started/deploying",
+    "https://vercel.com/frameworks/nextjs",
+    "https://www.netlify.com/with/nextjs/",
+    "https://dev.to/ethanleetech/best-8-deployment-and-hosting-for-nextjs-dip",
+    "https://www.digitalocean.com/solutions/nextjs-hosting",
+    "https://nextjstemplates.com/blog/best-nextjs-hosting",
+    "https://www.youtube.com/watch?v=DXfsYbEYHtI",
+    "https://nextjs.org/docs/pages/getting-started/deploying",
+    "https://vercel.com/frameworks/nextjs",
+    "https://www.netlify.com/with/nextjs/",
+    "https://dev.to/ethanleetech/best-8-deployment-and-hosting-for-nextjs-dip",
+    "https://www.digitalocean.com/solutions/nextjs-hosting",
+    "https://nextjstemplates.com/blog/best-nextjs-hosting",
+    "https://www.youtube.com/watch?v=DXfsYbEYHtI",
+    "https://nextjs.org/docs/pages/getting-started/deploying",
+    "https://vercel.com/frameworks/nextjs",
+    "https://www.netlify.com/with/nextjs/",
+    // Vercel vs Netlify (×5)
+    "https://www.netlify.com/guides/netlify-vs-vercel/",
+    "https://www.codecademy.com/article/vercel-vs-netlify-which-one-should-you-choose",
+    "https://northflank.com/blog/vercel-vs-netlify-choosing-the-deployment-platform-in-2026",
+    "https://bejamas.com/blog/self-hosting-vs-vercel-and-netlify-which-solution-is-right",
+    "https://tech-insider.org/vercel-vs-netlify-2026/",
+    "https://github.com/orgs/community/discussions/172181",
+    "https://www.youtube.com/watch?v=2bqSIVtF4jc",
+    "https://vercel.com/kb/guide/vercel-vs-netlify",
+    "https://www.codecademy.com/article/vercel-vs-netlify-which-one-should-you-choose",
+    "https://northflank.com/blog/vercel-vs-netlify-choosing-the-deployment-platform-in-2026",
+    "https://bejamas.com/blog/self-hosting-vs-vercel-and-netlify-which-solution-is-right",
+    "https://tech-insider.org/vercel-vs-netlify-2026/",
+    "https://github.com/orgs/community/discussions/172181",
+    "https://www.youtube.com/watch?v=2bqSIVtF4jc",
+    "https://www.netlify.com/guides/netlify-vs-vercel/",
+    "https://vercel.com/kb/guide/vercel-vs-netlify",
+    "https://www.codecademy.com/article/vercel-vs-netlify-which-one-should-you-choose",
+    "https://northflank.com/blog/vercel-vs-netlify-choosing-the-deployment-platform-in-2026",
+    "https://bejamas.com/blog/self-hosting-vs-vercel-and-netlify-which-solution-is-right",
+    "https://tech-insider.org/vercel-vs-netlify-2026/",
+    "https://snipcart.com/blog/vercel-vs-netlify",
+    "https://www.youtube.com/watch?v=2bqSIVtF4jc",
+    "https://vercel.com/kb/guide/vercel-vs-netlify",
+    "https://www.netlify.com/guides/netlify-vs-vercel/",
+    "https://www.codecademy.com/article/vercel-vs-netlify-which-one-should-you-choose",
+    "https://northflank.com/blog/vercel-vs-netlify-choosing-the-deployment-platform-in-2026",
+    "https://bejamas.com/blog/self-hosting-vs-vercel-and-netlify-which-solution-is-right",
+    "https://tech-insider.org/vercel-vs-netlify-2026/",
+    "https://github.com/orgs/community/discussions/172181",
+    "https://www.youtube.com/watch?v=2bqSIVtF4jc",
+    "https://vercel.com/kb/guide/vercel-vs-netlify",
+    "https://www.netlify.com/guides/netlify-vs-vercel/",
+    "https://www.codecademy.com/article/vercel-vs-netlify-which-one-should-you-choose",
+    "https://northflank.com/blog/vercel-vs-netlify-choosing-the-deployment-platform-in-2026",
+    "https://bejamas.com/blog/self-hosting-vs-vercel-and-netlify-which-solution-is-right",
+    "https://tech-insider.org/vercel-vs-netlify-2026/",
+    "https://github.com/orgs/community/discussions/172181",
+    "https://www.youtube.com/watch?v=2bqSIVtF4jc",
+    // cheapest host full stack (×5)
+    "https://dev.to/wasp/top-5-ways-to-host-your-full-stack-app-for-free-c2j",
+    "https://webapp.io/hosting",
+    "https://appwrite.io/blog/post/free-hosting-platform",
+    "https://dev.to/splintersword/the-cheapest-way-to-deploy-web-apps-p8f",
+    "https://www.youtube.com/watch?v=SI38jyEiso4",
+    "https://firebase.google.com/products/app-hosting",
+    "https://dev.to/wasp/top-5-ways-to-host-your-full-stack-app-for-free-c2j",
+    "https://webapp.io/hosting",
+    "https://appwrite.io/blog/post/free-hosting-platform",
+    "https://dev.to/splintersword/the-cheapest-way-to-deploy-web-apps-p8f",
+    "https://www.youtube.com/watch?v=SI38jyEiso4",
+    "https://firebase.google.com/products/app-hosting",
+    "https://dev.to/wasp/top-5-ways-to-host-your-full-stack-app-for-free-c2j",
+    "https://webapp.io/hosting",
+    "https://appwrite.io/blog/post/free-hosting-platform",
+    "https://dev.to/splintersword/the-cheapest-way-to-deploy-web-apps-p8f",
+    "https://www.youtube.com/watch?v=SI38jyEiso4",
+    "https://firebase.google.com/products/app-hosting",
+    "https://dev.to/wasp/top-5-ways-to-host-your-full-stack-app-for-free-c2j",
+    "https://webapp.io/hosting",
+    "https://appwrite.io/blog/post/free-hosting-platform",
+    "https://dev.to/splintersword/the-cheapest-way-to-deploy-web-apps-p8f",
+    "https://www.youtube.com/watch?v=SI38jyEiso4",
+    "https://firebase.google.com/products/app-hosting",
+    "https://dev.to/wasp/top-5-ways-to-host-your-full-stack-app-for-free-c2j",
+    "https://webapp.io/hosting",
+    "https://appwrite.io/blog/post/free-hosting-platform",
+    "https://dev.to/splintersword/the-cheapest-way-to-deploy-web-apps-p8f",
+    "https://www.youtube.com/watch?v=SI38jyEiso4",
+    "https://firebase.google.com/products/app-hosting",
+    // best platform deploying Docker (×5)
+    "https://www.xda-developers.com/ways-host-docker-containers-online/",
+    "https://www.hostingseekers.com/blog/top-docker-container-hosting-platforms/",
+    "https://northflank.com/blog/container-management-tools",
+    "https://www.cloudbees.com/blog/the-shortlist-of-docker-hosting",
+    "https://www.digitalocean.com/solutions/docker-hosting",
+    "https://www.docker.com",
+    "https://dev.to/toki_hossain/10-cheap-ways-to-deploy-docker-containers-in-2025-lig",
+    "https://www.digitalocean.com/solutions/docker-hosting",
+    "https://northflank.com/blog/container-management-tools",
+    "https://www.cloudbees.com/blog/the-shortlist-of-docker-hosting",
+    "https://spacelift.io/blog/docker-alternatives",
+    "https://purvaco.com/blog/hosting/best-10-docker-container-hosting-platforms/",
+    "https://dev.to/toki_hossain/10-cheap-ways-to-deploy-docker-containers-in-2025-lig",
+    "https://www.docker.com",
+    "https://www.digitalocean.com/solutions/docker-hosting",
+    "https://northflank.com/blog/container-management-tools",
+    "https://www.cloudbees.com/blog/the-shortlist-of-docker-hosting",
+    "https://spacelift.io/blog/docker-alternatives",
+    "https://purvaco.com/blog/hosting/best-10-docker-container-hosting-platforms/",
+    "https://dev.to/toki_hossain/10-cheap-ways-to-deploy-docker-containers-in-2025-lig",
+    "https://www.docker.com",
+    "https://www.digitalocean.com/solutions/docker-hosting",
+    "https://northflank.com/blog/container-management-tools",
+    "https://www.cloudbees.com/blog/the-shortlist-of-docker-hosting",
+    "https://spacelift.io/blog/docker-alternatives",
+    "https://purvaco.com/blog/hosting/best-10-docker-container-hosting-platforms/",
+    "https://dev.to/toki_hossain/10-cheap-ways-to-deploy-docker-containers-in-2025-lig",
+    "https://www.docker.com",
+    "https://www.digitalocean.com/solutions/docker-hosting",
+    "https://northflank.com/blog/container-management-tools",
+    "https://www.cloudbees.com/blog/the-shortlist-of-docker-hosting",
+    "https://spacelift.io/blog/docker-alternatives",
+    "https://purvaco.com/blog/hosting/best-10-docker-container-hosting-platforms/",
+    "https://dev.to/toki_hossain/10-cheap-ways-to-deploy-docker-containers-in-2025-lig",
+    "https://www.docker.com",
+    // Heroku alternative (×5)
+    "https://www.back4app.com/heroku-alternatives",
+    "https://judoscale.com/blog/heroku-alternatives",
+    "https://www.hostinger.com/tutorials/heroku-alternatives",
+    "https://www.digitalocean.com/resources/articles/heroku-alternatives",
+    "https://dokploy.com/blog/heroku-alternatives",
+    "https://www.lyrid.io/post/heroku-alternatives",
+    "https://github.com/DmitryScaletta/free-heroku-alternatives",
+    "https://www.back4app.com/heroku-alternatives",
+    "https://judoscale.com/blog/heroku-alternatives",
+    "https://www.hostinger.com/tutorials/heroku-alternatives",
+    "https://www.digitalocean.com/resources/articles/heroku-alternatives",
+    "https://dokploy.com/blog/heroku-alternatives",
+    "https://www.lyrid.io/post/heroku-alternatives",
+    "https://github.com/DmitryScaletta/free-heroku-alternatives",
+    "https://www.back4app.com/heroku-alternatives",
+    "https://judoscale.com/blog/heroku-alternatives",
+    "https://www.hostinger.com/tutorials/heroku-alternatives",
+    "https://www.digitalocean.com/resources/articles/heroku-alternatives",
+    "https://dokploy.com/blog/heroku-alternatives",
+    "https://github.com/DmitryScaletta/free-heroku-alternatives",
+    "https://render.com/articles/top-heroku-alternatives-agencies",
+    "https://www.back4app.com/heroku-alternatives",
+    "https://judoscale.com/blog/heroku-alternatives",
+    "https://www.hostinger.com/tutorials/heroku-alternatives",
+    "https://www.digitalocean.com/resources/articles/heroku-alternatives",
+    "https://dokploy.com/blog/heroku-alternatives",
+    "https://www.lyrid.io/post/heroku-alternatives",
+    "https://github.com/DmitryScaletta/free-heroku-alternatives",
+    "https://www.back4app.com/heroku-alternatives",
+    "https://judoscale.com/blog/heroku-alternatives",
+    "https://www.hostinger.com/tutorials/heroku-alternatives",
+    "https://www.digitalocean.com/resources/articles/heroku-alternatives",
+    "https://dokploy.com/blog/heroku-alternatives",
+    "https://www.lyrid.io/post/heroku-alternatives",
+    "https://github.com/DmitryScaletta/free-heroku-alternatives",
+  ],
+  db: [
+    // best database Next.js (×5)
+    "https://dev.to/ethanleetech/best-databases-for-nextjs-applications-3ef1",
+    "https://upstash.com/blog/best-database-for-nextjs",
+    "https://www.prisma.io/nextjs",
+    "https://nextjs.org/learn/dashboard-app/setting-up-your-database",
+    "https://blog.venturemagazine.net/choosing-the-right-database-for-your-next-js-app-a-2025-developers-guide-e559a13f869b",
+    "https://dev.to/ethanleetech/best-databases-for-nextjs-applications-3ef1",
+    "https://upstash.com/blog/best-database-for-nextjs",
+    "https://dev.to/hamzakhan/supercharge-your-nextjs-app-top-databases-to-consider-3pah",
+    "https://www.prisma.io/nextjs",
+    "https://nextjs.org/learn/dashboard-app/setting-up-your-database",
+    "https://dev.to/ethanleetech/best-databases-for-nextjs-applications-3ef1",
+    "https://upstash.com/blog/best-database-for-nextjs",
+    "https://www.prisma.io/nextjs",
+    "https://nextjs.org/learn/dashboard-app/setting-up-your-database",
+    "https://blog.venturemagazine.net/choosing-the-right-database-for-your-next-js-app-a-2025-developers-guide-e559a13f869b",
+    "https://dev.to/ethanleetech/best-databases-for-nextjs-applications-3ef1",
+    "https://upstash.com/blog/best-database-for-nextjs",
+    "https://dev.to/hamzakhan/supercharge-your-nextjs-app-top-databases-to-consider-3pah",
+    "https://www.prisma.io/nextjs",
+    "https://nextjs.org/learn/dashboard-app/setting-up-your-database",
+    "https://dev.to/ethanleetech/best-databases-for-nextjs-applications-3ef1",
+    "https://upstash.com/blog/best-database-for-nextjs",
+    "https://dev.to/hamzakhan/supercharge-your-nextjs-app-top-databases-to-consider-3pah",
+    "https://www.prisma.io/nextjs",
+    "https://nextjs.org/learn/dashboard-app/setting-up-your-database",
+    // Supabase vs Firebase (×5)
+    "https://www.jakeprins.com/blog/supabase-vs-firebase-2024",
+    "https://zapier.com/blog/supabase-vs-firebase/",
+    "https://dev.to/mwolfhoffman/supabase-vs-firebase-pricing-and-when-to-use-which-5hhp",
+    "https://www.bytebase.com/blog/supabase-vs-firebase/",
+    "https://www.rocket.new/blog/firebase-vs-supabase-what-developers-should-know-before-deciding",
+    "https://www.youtube.com/watch?v=XYe8mKwMHLg",
+    "https://tech-insider.org/supabase-vs-firebase-2026/",
+    "https://www.youtube.com/watch?v=Jm2QYfdnaNM",
+    "https://www.jakeprins.com/blog/supabase-vs-firebase-2024",
+    "https://zapier.com/blog/supabase-vs-firebase/",
+    "https://dev.to/mwolfhoffman/supabase-vs-firebase-pricing-and-when-to-use-which-5hhp",
+    "https://www.bytebase.com/blog/supabase-vs-firebase/",
+    "https://www.rocket.new/blog/firebase-vs-supabase-what-developers-should-know-before-deciding",
+    "https://supabase.com/alternatives/supabase-vs-firebase",
+    "https://www.youtube.com/watch?v=XYe8mKwMHLg",
+    "https://tech-insider.org/supabase-vs-firebase-2026/",
+    "https://www.youtube.com/watch?v=Jm2QYfdnaNM",
+    "https://www.jakeprins.com/blog/supabase-vs-firebase-2024",
+    "https://zapier.com/blog/supabase-vs-firebase/",
+    "https://dev.to/mwolfhoffman/supabase-vs-firebase-pricing-and-when-to-use-which-5hhp",
+    "https://www.bytebase.com/blog/supabase-vs-firebase/",
+    "https://www.rocket.new/blog/firebase-vs-supabase-what-developers-should-know-before-deciding",
+    "https://supabase.com/alternatives/supabase-vs-firebase",
+    "https://www.youtube.com/watch?v=XYe8mKwMHLg",
+    "https://tech-insider.org/supabase-vs-firebase-2026/",
+    "https://www.youtube.com/watch?v=Jm2QYfdnaNM",
+    "https://www.jakeprins.com/blog/supabase-vs-firebase-2024",
+    "https://zapier.com/blog/supabase-vs-firebase/",
+    "https://dev.to/mwolfhoffman/supabase-vs-firebase-pricing-and-when-to-use-which-5hhp",
+    "https://www.bytebase.com/blog/supabase-vs-firebase/",
+    "https://www.rocket.new/blog/firebase-vs-supabase-what-developers-should-know-before-deciding",
+    "https://supabase.com/alternatives/supabase-vs-firebase",
+    "https://www.youtube.com/watch?v=XYe8mKwMHLg",
+    "https://tech-insider.org/supabase-vs-firebase-2026/",
+    "https://www.youtube.com/watch?v=Jm2QYfdnaNM",
+    "https://www.jakeprins.com/blog/supabase-vs-firebase-2024",
+    "https://zapier.com/blog/supabase-vs-firebase/",
+    "https://dev.to/mwolfhoffman/supabase-vs-firebase-pricing-and-when-to-use-which-5hhp",
+    "https://www.bytebase.com/blog/supabase-vs-firebase/",
+    "https://www.rocket.new/blog/firebase-vs-supabase-what-developers-should-know-before-deciding",
+    "https://supabase.com/alternatives/supabase-vs-firebase",
+    "https://www.youtube.com/watch?v=XYe8mKwMHLg",
+    "https://tech-insider.org/supabase-vs-firebase-2026/",
+    "https://www.youtube.com/watch?v=Jm2QYfdnaNM",
+    // free PostgreSQL (×5)
+    "https://www.koyeb.com/blog/top-postgresql-database-free-tiers-in-2026",
+    "https://dev.to/hackmamba/run-postgres-for-free-top-3-options-2pk6",
+    "https://fly.io/blog/free-postgres/",
+    "https://github.com/alexeyfv/awesome-free-postgres",
+    "https://hasura.io/blog/top-postgresql-database-free-tier-solutions",
+    "https://www.postgresql.org",
+    "https://www.koyeb.com/blog/top-postgresql-database-free-tiers-in-2026",
+    "https://dev.to/hackmamba/run-postgres-for-free-top-3-options-2pk6",
+    "https://fly.io/blog/free-postgres/",
+    "https://github.com/alexeyfv/awesome-free-postgres",
+    "https://hasura.io/blog/top-postgresql-database-free-tier-solutions",
+    "https://www.postgresql.org",
+    "https://supabase.com/database",
+    "https://www.digitalocean.com/products/managed-databases-postgresql",
+    "https://www.koyeb.com/blog/top-postgresql-database-free-tiers-in-2026",
+    "https://dev.to/hackmamba/run-postgres-for-free-top-3-options-2pk6",
+    "https://fly.io/blog/free-postgres/",
+    "https://github.com/alexeyfv/awesome-free-postgres",
+    "https://hasura.io/blog/top-postgresql-database-free-tier-solutions",
+    "https://supabase.com/database",
+    "https://www.postgresql.org",
+    "https://www.koyeb.com/blog/top-postgresql-database-free-tiers-in-2026",
+    "https://dev.to/hackmamba/run-postgres-for-free-top-3-options-2pk6",
+    "https://fly.io/blog/free-postgres/",
+    "https://github.com/alexeyfv/awesome-free-postgres",
+    "https://hasura.io/blog/top-postgresql-database-free-tier-solutions",
+    "https://supabase.com/database",
+    "https://www.postgresql.org",
+    "https://www.koyeb.com/blog/top-postgresql-database-free-tiers-in-2026",
+    "https://dev.to/hackmamba/run-postgres-for-free-top-3-options-2pk6",
+    "https://fly.io/blog/free-postgres/",
+    "https://github.com/alexeyfv/awesome-free-postgres",
+    "https://hasura.io/blog/top-postgresql-database-free-tier-solutions",
+    "https://supabase.com/database",
+    "https://www.postgresql.org",
+    // serverless database free tier (×5)
+    "https://blog.logrocket.com/11-planetscale-alternatives-free-tiers/",
+    "https://learn.microsoft.com/en-us/azure/azure-sql/database/free-offer?view=azuresql",
+    "https://www.cockroachlabs.com/blog/serverless-free/",
+    "https://aws.amazon.com/free/database/",
+    "https://skysql.com/blog/introducing-skysql-serverless-instantly-scalable-databases-with-a-free-tier",
+    "https://2coffee.dev/en/articles/a-compilation-of-free-and-high-quality-serverless-databases",
+    "https://formbold.com/blog/free-database-hosting",
+    "https://gist.github.com/hashirahmad/8df502f8d9e3b01f7998c55c22447c4f",
+    "https://www.cockroachlabs.com/blog/serverless-free/",
+    "https://skysql.com/blog/introducing-skysql-serverless-instantly-scalable-databases-with-a-free-tier",
+    "https://aws.amazon.com/free/database/",
+    "https://www.koyeb.com/blog/top-postgresql-database-free-tiers-in-2026",
+    "https://learn.microsoft.com/en-us/azure/azure-sql/database/free-offer?view=azuresql",
+    "https://2coffee.dev/en/articles/a-compilation-of-free-and-high-quality-serverless-databases",
+    "https://formbold.com/blog/free-database-hosting",
+    "https://gist.github.com/hashirahmad/8df502f8d9e3b01f7998c55c22447c4f",
+    "https://www.cockroachlabs.com/blog/serverless-free/",
+    "https://skysql.com/blog/introducing-skysql-serverless-instantly-scalable-databases-with-a-free-tier",
+    "https://aws.amazon.com/free/database/",
+    "https://www.koyeb.com/blog/top-postgresql-database-free-tiers-in-2026",
+    "https://learn.microsoft.com/en-us/azure/azure-sql/database/free-offer?view=azuresql",
+    "https://2coffee.dev/en/articles/a-compilation-of-free-and-high-quality-serverless-databases",
+    "https://formbold.com/blog/free-database-hosting",
+    "https://gist.github.com/hashirahmad/8df502f8d9e3b01f7998c55c22447c4f",
+    "https://www.cockroachlabs.com/blog/serverless-free/",
+    "https://aws.amazon.com/free/database/",
+    "https://skysql.com/blog/introducing-skysql-serverless-instantly-scalable-databases-with-a-free-tier",
+    "https://www.koyeb.com/blog/top-postgresql-database-free-tiers-in-2026",
+    "https://learn.microsoft.com/en-us/azure/azure-sql/database/free-offer?view=azuresql",
+    "https://2coffee.dev/en/articles/a-compilation-of-free-and-high-quality-serverless-databases",
+    "https://formbold.com/blog/free-database-hosting",
+    "https://gist.github.com/hashirahmad/8df502f8d9e3b01f7998c55c22447c4f",
+    "https://www.cockroachlabs.com/blog/serverless-free/",
+    "https://aws.amazon.com/free/database/",
+    "https://skysql.com/blog/introducing-skysql-serverless-instantly-scalable-databases-with-a-free-tier",
+    "https://www.koyeb.com/blog/top-postgresql-database-free-tiers-in-2026",
+    "https://learn.microsoft.com/en-us/azure/azure-sql/database/free-offer?view=azuresql",
+    "https://2coffee.dev/en/articles/a-compilation-of-free-and-high-quality-serverless-databases",
+    "https://formbold.com/blog/free-database-hosting",
+    "https://gist.github.com/hashirahmad/8df502f8d9e3b01f7998c55c22447c4f",
+    // best database SaaS (×5)
+    "https://acecloud.ai/blog/best-cloud-database-providers/",
+    "https://dev.to/mghassen/database-management-systems-for-saas-a-comprehensive-guide-1185",
+    "https://www.youtube.com/watch?v=ZAQ8iC1xcZ0",
+    "https://www.notionsender.com/blog/post/best-database-software-for-small-business",
+    "https://www.integrate.io/blog/top-saas-data-integration-platforms-for-your-use-case/",
+    "https://acecloud.ai/blog/best-cloud-database-providers/",
+    "https://dev.to/mghassen/database-management-systems-for-saas-a-comprehensive-guide-1185",
+    "https://www.youtube.com/watch?v=ZAQ8iC1xcZ0",
+    "https://www.notionsender.com/blog/post/best-database-software-for-small-business",
+    "https://www.integrate.io/blog/top-saas-data-integration-platforms-for-your-use-case/",
+    "https://acecloud.ai/blog/best-cloud-database-providers/",
+    "https://dev.to/mghassen/database-management-systems-for-saas-a-comprehensive-guide-1185",
+    "https://www.youtube.com/watch?v=ZAQ8iC1xcZ0",
+    "https://www.notionsender.com/blog/post/best-database-software-for-small-business",
+    "https://www.integrate.io/blog/top-saas-data-integration-platforms-for-your-use-case/",
+    "https://acecloud.ai/blog/best-cloud-database-providers/",
+    "https://dev.to/mghassen/database-management-systems-for-saas-a-comprehensive-guide-1185",
+    "https://www.youtube.com/watch?v=ZAQ8iC1xcZ0",
+    "https://www.notionsender.com/blog/post/best-database-software-for-small-business",
+    "https://www.integrate.io/blog/top-saas-data-integration-platforms-for-your-use-case/",
+    "https://acecloud.ai/blog/best-cloud-database-providers/",
+    "https://dev.to/mghassen/database-management-systems-for-saas-a-comprehensive-guide-1185",
+    "https://www.youtube.com/watch?v=ZAQ8iC1xcZ0",
+    "https://www.notionsender.com/blog/post/best-database-software-for-small-business",
+    "https://www.integrate.io/blog/top-saas-data-integration-platforms-for-your-use-case/",
+  ],
+  pm: [
+    // best PM tool (×10 — 2 batches × 5)
+    "https://www.paymoapp.com/blog/project-management-software/","https://www.youtube.com/watch?v=2CPcky1KQJo&vl=en-US","https://www.microsoft.com/en-us/microsoft-365/planner/project-management","https://www.icagile.com/resources/honest-review-of-6-personal-project-management-tools-with-kanban-view","https://thedigitalprojectmanager.com/tools/best-project-management-software-that-integrates-with-microsoft-teams/","https://project-management.com/best-project-management-software-for-small-teams/","https://www.wrike.com/project-management-guide/faq/what-are-project-management-tools/","https://zapier.com/blog/free-project-management-software/",
+    "https://www.paymoapp.com/blog/project-management-software/","https://www.youtube.com/watch?v=2CPcky1KQJo&vl=en-US","https://www.microsoft.com/en-us/microsoft-365/planner/project-management","https://www.icagile.com/resources/honest-review-of-6-personal-project-management-tools-with-kanban-view","https://project-management.com/best-project-management-software-for-small-teams/","https://thedigitalprojectmanager.com/tools/best-project-management-software-that-integrates-with-microsoft-teams/","https://www.wrike.com/project-management-guide/faq/what-are-project-management-tools/","https://zapier.com/blog/free-project-management-software/",
+    "https://www.paymoapp.com/blog/project-management-software/","https://www.youtube.com/watch?v=2CPcky1KQJo&vl=en-US","https://www.microsoft.com/en-us/microsoft-365/planner/project-management","https://www.icagile.com/resources/honest-review-of-6-personal-project-management-tools-with-kanban-view","https://project-management.com/best-project-management-software-for-small-teams/","https://thedigitalprojectmanager.com/tools/best-project-management-software-that-integrates-with-microsoft-teams/","https://www.wrike.com/project-management-guide/faq/what-are-project-management-tools/","https://zapier.com/blog/free-project-management-software/",
+    "https://www.paymoapp.com/blog/project-management-software/","https://www.youtube.com/watch?v=2CPcky1KQJo&vl=en-US","https://www.microsoft.com/en-us/microsoft-365/planner/project-management","https://www.icagile.com/resources/honest-review-of-6-personal-project-management-tools-with-kanban-view","https://project-management.com/best-project-management-software-for-small-teams/","https://thedigitalprojectmanager.com/tools/best-project-management-software-that-integrates-with-microsoft-teams/","https://www.wrike.com/project-management-guide/faq/what-are-project-management-tools/","https://zapier.com/blog/free-project-management-software/",
+    "https://www.paymoapp.com/blog/project-management-software/","https://www.youtube.com/watch?v=2CPcky1KQJo&vl=en-US","https://www.microsoft.com/en-us/microsoft-365/planner/project-management","https://www.icagile.com/resources/honest-review-of-6-personal-project-management-tools-with-kanban-view","https://project-management.com/best-project-management-software-for-small-teams/","https://thedigitalprojectmanager.com/tools/best-project-management-software-that-integrates-with-microsoft-teams/","https://www.wrike.com/project-management-guide/faq/what-are-project-management-tools/","https://zapier.com/blog/free-project-management-software/",
+    // batch 2 same 5 brands
+    "https://www.paymoapp.com/blog/project-management-software/","https://www.youtube.com/watch?v=2CPcky1KQJo&vl=en-US","https://www.microsoft.com/en-us/microsoft-365/planner/project-management","https://www.icagile.com/resources/honest-review-of-6-personal-project-management-tools-with-kanban-view","https://thedigitalprojectmanager.com/tools/best-project-management-software-that-integrates-with-microsoft-teams/","https://project-management.com/best-project-management-software-for-small-teams/","https://www.wrike.com/project-management-guide/faq/what-are-project-management-tools/","https://zapier.com/blog/free-project-management-software/",
+    "https://www.paymoapp.com/blog/project-management-software/","https://www.youtube.com/watch?v=2CPcky1KQJo&vl=en-US","https://www.microsoft.com/en-us/microsoft-365/planner/project-management","https://www.icagile.com/resources/honest-review-of-6-personal-project-management-tools-with-kanban-view","https://thedigitalprojectmanager.com/tools/best-project-management-software-that-integrates-with-microsoft-teams/","https://project-management.com/best-project-management-software-for-small-teams/","https://www.wrike.com/project-management-guide/faq/what-are-project-management-tools/","https://zapier.com/blog/free-project-management-software/",
+    "https://www.paymoapp.com/blog/project-management-software/","https://www.youtube.com/watch?v=2CPcky1KQJo&vl=en-US","https://www.microsoft.com/en-us/microsoft-365/planner/project-management","https://www.icagile.com/resources/honest-review-of-6-personal-project-management-tools-with-kanban-view","https://project-management.com/best-project-management-software-for-small-teams/","https://thedigitalprojectmanager.com/tools/best-project-management-software-that-integrates-with-microsoft-teams/","https://www.wrike.com/project-management-guide/faq/what-are-project-management-tools/","https://zapier.com/blog/free-project-management-software/",
+    "https://www.paymoapp.com/blog/project-management-software/","https://www.youtube.com/watch?v=2CPcky1KQJo&vl=en-US","https://www.microsoft.com/en-us/microsoft-365/planner/project-management","https://www.icagile.com/resources/honest-review-of-6-personal-project-management-tools-with-kanban-view","https://project-management.com/best-project-management-software-for-small-teams/","https://thedigitalprojectmanager.com/tools/best-project-management-software-that-integrates-with-microsoft-teams/","https://www.wrike.com/project-management-guide/faq/what-are-project-management-tools/","https://zapier.com/blog/free-project-management-software/",
+    "https://www.paymoapp.com/blog/project-management-software/","https://www.youtube.com/watch?v=2CPcky1KQJo&vl=en-US","https://www.microsoft.com/en-us/microsoft-365/planner/project-management","https://www.icagile.com/resources/honest-review-of-6-personal-project-management-tools-with-kanban-view","https://project-management.com/best-project-management-software-for-small-teams/","https://thedigitalprojectmanager.com/tools/best-project-management-software-that-integrates-with-microsoft-teams/","https://www.wrike.com/project-management-guide/faq/what-are-project-management-tools/","https://zapier.com/blog/free-project-management-software/",
+    // Linear vs Jira (×10 — 2 batches × 5)
+    "https://www.youtube.com/watch?v=bXAQiFcqBhQ","https://monday.com/blog/rnd/linear-or-jira/","https://www.steelsync.io/blog/linear-vs-jira-which-is-the-best-ultimate-fit-for-your-saas-startup-or-agency","https://www.laneapp.co/blog/jira-vs-linear-which-tool-wins","https://shyft.ai/tools/compare/linear-vs-jira","https://www.atlassian.com/software/jira/comparison/jira-vs-linear","https://efficient.app/compare/linear-vs-jira","https://www.splotch.ink/blog/why-we-switched-from-jira-to-linear",
+    "https://www.youtube.com/watch?v=bXAQiFcqBhQ","https://monday.com/blog/rnd/linear-or-jira/","https://www.steelsync.io/blog/linear-vs-jira-which-is-the-best-ultimate-fit-for-your-saas-startup-or-agency","https://www.laneapp.co/blog/jira-vs-linear-which-tool-wins","https://shyft.ai/tools/compare/linear-vs-jira","https://www.atlassian.com/software/jira/comparison/jira-vs-linear","https://efficient.app/compare/linear-vs-jira","https://www.splotch.ink/blog/why-we-switched-from-jira-to-linear",
+    "https://www.youtube.com/watch?v=bXAQiFcqBhQ","https://monday.com/blog/rnd/linear-or-jira/","https://www.siit.io/tools/comparison/linear-vs-jira","https://www.laneapp.co/blog/jira-vs-linear-which-tool-wins","https://www.youtube.com/watch?v=dXD08FPNPpI","https://tech-insider.org/linear-vs-jira-2026/","https://www.splotch.ink/blog/why-we-switched-from-jira-to-linear",
+    "https://monday.com/blog/rnd/linear-or-jira/","https://www.youtube.com/watch?v=bXAQiFcqBhQ","https://www.projectmanagertemplate.com/post/linear-vs-jira-choosing-the-right-project-management-tool","https://www.siit.io/tools/comparison/linear-vs-jira","https://everhour.com/blog/linear-vs-jira/","https://www.laneapp.co/blog/jira-vs-linear-which-tool-wins","https://www.atlassian.com/software/jira/comparison/jira-vs-linear","https://tech-insider.org/linear-vs-jira-2026/",
+    "https://www.youtube.com/watch?v=bXAQiFcqBhQ","https://www.siit.io/tools/comparison/linear-vs-jira","https://monday.com/blog/rnd/linear-or-jira/","https://www.steelsync.io/blog/linear-vs-jira-which-is-the-best-ultimate-fit-for-your-saas-startup-or-agency","https://www.laneapp.co/blog/jira-vs-linear-which-tool-wins","https://tech-insider.org/linear-vs-jira-2026/","https://www.atlassian.com/software/jira/comparison/jira-vs-linear","https://www.splotch.ink/blog/why-we-switched-from-jira-to-linear",
+    // batch 2
+    "https://www.youtube.com/watch?v=bXAQiFcqBhQ","https://monday.com/blog/rnd/linear-or-jira/","https://www.siit.io/tools/comparison/linear-vs-jira","https://www.laneapp.co/blog/jira-vs-linear-which-tool-wins","https://www.youtube.com/watch?v=dXD08FPNPpI","https://tech-insider.org/linear-vs-jira-2026/","https://www.atlassian.com/software/jira/comparison/jira-vs-linear","https://www.splotch.ink/blog/why-we-switched-from-jira-to-linear",
+    "https://www.youtube.com/watch?v=bXAQiFcqBhQ","https://monday.com/blog/rnd/linear-or-jira/","https://www.steelsync.io/blog/linear-vs-jira-which-is-the-best-ultimate-fit-for-your-saas-startup-or-agency","https://onehorizon.ai/blog/jira-vs-linear-ultimate-comparison-for-modern-product-teams","https://www.laneapp.co/blog/jira-vs-linear-which-tool-wins","https://shyft.ai/tools/compare/linear-vs-jira","https://tech-insider.org/linear-vs-jira-2026/","https://www.atlassian.com/software/jira/comparison/jira-vs-linear",
+    "https://www.youtube.com/watch?v=bXAQiFcqBhQ","https://monday.com/blog/rnd/linear-or-jira/","https://www.steelsync.io/blog/linear-vs-jira-which-is-the-best-ultimate-fit-for-your-saas-startup-or-agency","https://onehorizon.ai/blog/jira-vs-linear-ultimate-comparison-for-modern-product-teams","https://www.laneapp.co/blog/jira-vs-linear-which-tool-wins","https://shyft.ai/tools/compare/linear-vs-jira","https://tech-insider.org/linear-vs-jira-2026/",
+    "https://www.youtube.com/watch?v=bXAQiFcqBhQ","https://monday.com/blog/rnd/linear-or-jira/","https://www.siit.io/tools/comparison/linear-vs-jira","https://www.laneapp.co/blog/jira-vs-linear-which-tool-wins","https://www.youtube.com/watch?v=dXD08FPNPpI","https://tech-insider.org/linear-vs-jira-2026/","https://www.atlassian.com/software/jira/comparison/jira-vs-linear","https://www.splotch.ink/blog/why-we-switched-from-jira-to-linear",
+    "https://www.youtube.com/watch?v=bXAQiFcqBhQ","https://www.siit.io/tools/comparison/linear-vs-jira","https://monday.com/blog/rnd/linear-or-jira/","https://www.steelsync.io/blog/linear-vs-jira-which-is-the-best-ultimate-fit-for-your-saas-startup-or-agency","https://www.laneapp.co/blog/jira-vs-linear-which-tool-wins","https://tech-insider.org/linear-vs-jira-2026/","https://www.atlassian.com/software/jira/comparison/jira-vs-linear","https://www.splotch.ink/blog/why-we-switched-from-jira-to-linear",
+    // open source Jira (×10 — 2 batches × 5)
+    "https://www.openproject.org/blog/open-source-jira-alternative/","https://www.youtube.com/watch?v=pgWHATQzkHk","https://plane.so/blog/11-jira-alternatives-you-can-self-host-in-2026","https://www.redmineup.com/pages/blog/open-source-jira","https://budibase.com/blog/alternatives/open-source-jira-alternatives/","https://dev.to/getcore/5-open-source-tools-that-are-alternatives-of-jira-linear-and-asana-2no6","https://rootstack.com/en/blog/top-5-best-open-source-alternatives-jira-2025",
+    "https://www.openproject.org/blog/open-source-jira-alternative/","https://www.youtube.com/watch?v=pgWHATQzkHk","https://plane.so/blog/11-jira-alternatives-you-can-self-host-in-2026","https://www.redmineup.com/pages/blog/open-source-jira","https://budibase.com/blog/alternatives/open-source-jira-alternatives/","https://dev.to/getcore/5-open-source-tools-that-are-alternatives-of-jira-linear-and-asana-2no6","https://rootstack.com/en/blog/top-5-best-open-source-alternatives-jira-2025",
+    "https://www.openproject.org/blog/open-source-jira-alternative/","https://www.youtube.com/watch?v=pgWHATQzkHk","https://plane.so/blog/11-jira-alternatives-you-can-self-host-in-2026","https://www.redmineup.com/pages/blog/open-source-jira","https://budibase.com/blog/alternatives/open-source-jira-alternatives/","https://dev.to/getcore/5-open-source-tools-that-are-alternatives-of-jira-linear-and-asana-2no6","https://rootstack.com/en/blog/top-5-best-open-source-alternatives-jira-2025",
+    "https://www.openproject.org/blog/open-source-jira-alternative/","https://www.youtube.com/watch?v=pgWHATQzkHk","https://plane.so/blog/11-jira-alternatives-you-can-self-host-in-2026","https://www.redmineup.com/pages/blog/open-source-jira","https://budibase.com/blog/alternatives/open-source-jira-alternatives/","https://dev.to/getcore/5-open-source-tools-that-are-alternatives-of-jira-linear-and-asana-2no6","https://rootstack.com/en/blog/top-5-best-open-source-alternatives-jira-2025",
+    "https://www.openproject.org/blog/open-source-jira-alternative/","https://www.youtube.com/watch?v=pgWHATQzkHk","https://www.redmineup.com/pages/blog/open-source-jira","https://budibase.com/blog/alternatives/open-source-jira-alternatives/","https://dev.to/getcore/5-open-source-tools-that-are-alternatives-of-jira-linear-and-asana-2no6","https://rootstack.com/en/blog/top-5-best-open-source-alternatives-jira-2025",
+    "https://www.openproject.org/blog/open-source-jira-alternative/","https://www.youtube.com/watch?v=pgWHATQzkHk","https://plane.so/blog/11-jira-alternatives-you-can-self-host-in-2026","https://www.redmineup.com/pages/blog/open-source-jira","https://budibase.com/blog/alternatives/open-source-jira-alternatives/","https://dev.to/getcore/5-open-source-tools-that-are-alternatives-of-jira-linear-and-asana-2no6","https://rootstack.com/en/blog/top-5-best-open-source-alternatives-jira-2025",
+    "https://www.openproject.org/blog/open-source-jira-alternative/","https://www.youtube.com/watch?v=pgWHATQzkHk","https://plane.so/blog/11-jira-alternatives-you-can-self-host-in-2026","https://www.redmineup.com/pages/blog/open-source-jira","https://budibase.com/blog/alternatives/open-source-jira-alternatives/","https://dev.to/getcore/5-open-source-tools-that-are-alternatives-of-jira-linear-and-asana-2no6","https://rootstack.com/en/blog/top-5-best-open-source-alternatives-jira-2025",
+    "https://www.openproject.org/blog/open-source-jira-alternative/","https://www.youtube.com/watch?v=pgWHATQzkHk","https://plane.so/blog/11-jira-alternatives-you-can-self-host-in-2026","https://www.redmineup.com/pages/blog/open-source-jira","https://budibase.com/blog/alternatives/open-source-jira-alternatives/","https://dev.to/getcore/5-open-source-tools-that-are-alternatives-of-jira-linear-and-asana-2no6","https://rootstack.com/en/blog/top-5-best-open-source-alternatives-jira-2025",
+    "https://www.openproject.org/blog/open-source-jira-alternative/","https://www.youtube.com/watch?v=pgWHATQzkHk","https://plane.so/blog/11-jira-alternatives-you-can-self-host-in-2026","https://www.redmineup.com/pages/blog/open-source-jira","https://budibase.com/blog/alternatives/open-source-jira-alternatives/","https://dev.to/getcore/5-open-source-tools-that-are-alternatives-of-jira-linear-and-asana-2no6","https://rootstack.com/en/blog/top-5-best-open-source-alternatives-jira-2025",
+    "https://www.openproject.org/blog/open-source-jira-alternative/","https://www.youtube.com/watch?v=pgWHATQzkHk","https://www.redmineup.com/pages/blog/open-source-jira","https://budibase.com/blog/alternatives/open-source-jira-alternatives/","https://dev.to/getcore/5-open-source-tools-that-are-alternatives-of-jira-linear-and-asana-2no6","https://rootstack.com/en/blog/top-5-best-open-source-alternatives-jira-2025",
+    // best issue tracker (×10 — 2 batches × 5)
+    "https://dev.to/parizad/5-best-issue-tracking-software-for-small-teams-dk2","https://www.atlassian.com/agile/project-management/issue-tracking-software","https://atono.io/blog/fastest-issue-trackers-modern-development-teams","https://monday.com/blog/rnd/issue-tracker/","https://www.zendesk.com/service/help-desk-software/issue-tracker-software-free/","https://disbug.io/en/blog/best-free-issue-tracking-software-modern-teams/","https://www.meegle.com/blogs/issue-tracking-software",
+    "https://www.larksuite.com/en_us/blog/issue-tracking","https://www.atlassian.com/agile/project-management/issue-tracking-software","https://monday.com/blog/rnd/issue-tracker/","https://dev.to/parizad/5-best-issue-tracking-software-for-small-teams-dk2","https://www.zendesk.com/service/help-desk-software/issue-tracker-software-free/","https://www.meegle.com/blogs/issue-tracking-software","https://en.wikipedia.org/wiki/Comparison_of_issue-tracking_systems",
+    "https://www.larksuite.com/en_us/blog/issue-tracking","https://monday.com/blog/rnd/issue-tracker/","https://dev.to/parizad/5-best-issue-tracking-software-for-small-teams-dk2","https://www.zendesk.com/service/help-desk-software/issue-tracker-software-free/","https://www.meegle.com/blogs/issue-tracking-software","https://en.wikipedia.org/wiki/Comparison_of_issue-tracking_systems",
+    "https://dev.to/parizad/5-best-issue-tracking-software-for-small-teams-dk2","https://www.atlassian.com/agile/project-management/issue-tracking-software","https://atono.io/blog/fastest-issue-trackers-modern-development-teams","https://monday.com/blog/rnd/issue-tracker/","https://www.zendesk.com/service/help-desk-software/issue-tracker-software-free/","https://disbug.io/en/blog/best-free-issue-tracking-software-modern-teams/","https://www.meegle.com/blogs/issue-tracking-software",
+    "https://www.larksuite.com/en_us/blog/issue-tracking","https://www.atlassian.com/agile/project-management/issue-tracking-software","https://monday.com/blog/rnd/issue-tracker/","https://dev.to/parizad/5-best-issue-tracking-software-for-small-teams-dk2","https://www.zendesk.com/service/help-desk-software/issue-tracker-software-free/","https://www.meegle.com/blogs/issue-tracking-software","https://en.wikipedia.org/wiki/Comparison_of_issue-tracking_systems",
+    // batch 2
+    "https://www.larksuite.com/en_us/blog/issue-tracking","https://www.atlassian.com/agile/project-management/issue-tracking-software","https://monday.com/blog/rnd/issue-tracker/","https://dev.to/parizad/5-best-issue-tracking-software-for-small-teams-dk2","https://www.zendesk.com/service/help-desk-software/issue-tracker-software-free/","https://www.meegle.com/blogs/issue-tracking-software","https://en.wikipedia.org/wiki/Comparison_of_issue-tracking_systems",
+    "https://www.larksuite.com/en_us/blog/issue-tracking","https://www.atlassian.com/agile/project-management/issue-tracking-software","https://monday.com/blog/rnd/issue-tracker/","https://dev.to/parizad/5-best-issue-tracking-software-for-small-teams-dk2","https://www.zendesk.com/service/help-desk-software/issue-tracker-software-free/","https://www.meegle.com/blogs/issue-tracking-software","https://en.wikipedia.org/wiki/Comparison_of_issue-tracking_systems",
+    "https://www.larksuite.com/en_us/blog/issue-tracking","https://monday.com/blog/rnd/issue-tracker/","https://dev.to/parizad/5-best-issue-tracking-software-for-small-teams-dk2","https://www.zendesk.com/service/help-desk-software/issue-tracker-software-free/","https://www.meegle.com/blogs/issue-tracking-software","https://en.wikipedia.org/wiki/Comparison_of_issue-tracking_systems",
+    "https://dev.to/parizad/5-best-issue-tracking-software-for-small-teams-dk2","https://www.atlassian.com/agile/project-management/issue-tracking-software","https://atono.io/blog/fastest-issue-trackers-modern-development-teams","https://monday.com/blog/rnd/issue-tracker/","https://www.zendesk.com/service/help-desk-software/issue-tracker-software-free/","https://disbug.io/en/blog/best-free-issue-tracking-software-modern-teams/","https://www.meegle.com/blogs/issue-tracking-software",
+    "https://dev.to/parizad/5-best-issue-tracking-software-for-small-teams-dk2","https://www.atlassian.com/agile/project-management/issue-tracking-software","https://atono.io/blog/fastest-issue-trackers-modern-development-teams","https://monday.com/blog/rnd/issue-tracker/","https://www.zendesk.com/service/help-desk-software/issue-tracker-software-free/","https://disbug.io/en/blog/best-free-issue-tracking-software-modern-teams/","https://www.meegle.com/blogs/issue-tracking-software",
+    // fast growing startups (×5)
+    "https://www.landbase.com/blog/fastest-growing-construction-tech-companies","https://grauberg.co/resources/project-management-startups","https://gartsolutions.com/top-10-platform-engineering-companies/","https://wellfound.com/startups/industry/workforce-management-2","https://explodingtopics.com/blog/project-management-startups","https://techstartups.com/startup-jobs/job-categories/management","https://www.siit.io/blog/best-project-management-software-for-startups","https://topstartups.io/jobs/?role=Engineering+Manager","https://www.seedtable.com/best-task-management-startups",
+    "https://www.shortcut.com/blog/best-project-management-tools-for-engineering-teams-in-2026","https://wellfound.com/startups/industry/workforce-management-2","https://explodingtopics.com/blog/project-management-startups","https://dbbsoftware.com/insights/top-product-engineering-companies","https://www.landbase.com/blog/fastest-growing-employee-engagement-tech","https://www.seedtable.com/best-project-management-startups","https://www.ycombinator.com/companies/location/new-york/hiring","https://topstartups.io/jobs/?role=Engineering+Manager","https://www.builtinnyc.com","https://firstlinesoftware.com/blog/30-fastest-growing-tech-companies-silicon-review/",
+    "https://www.landbase.com/blog/fastest-growing-construction-tech-companies","https://www.ycombinator.com/companies/location/los-angeles/hiring","https://explodingtopics.com/blog/project-management-startups","https://wellfound.com/startups/industry/workforce-management-2","https://www.siit.io/blog/best-project-management-software-for-startups","https://topstartups.io/?hq_location=Los+Angeles","https://www.seedtable.com/best-task-management-startups","https://www.builtinla.com","https://topstartups.io/jobs/?role=Engineering+Manager",
+    "https://www.landbase.com/blog/fastest-growing-construction-tech-companies","https://grauberg.co/resources/project-management-startups","https://www.shortcut.com/blog/best-project-management-tools-for-engineering-teams-in-2026","https://explodingtopics.com/blog/project-management-startups","https://wellfound.com/startups/industry/workforce-management-2","https://dbbsoftware.com/insights/top-product-engineering-companies","https://techstartups.com/startup-jobs/job-categories/management","https://topstartups.io/jobs/?role=Engineering+Manager","https://www.seedtable.com/best-task-management-startups","https://firstlinesoftware.com/blog/30-fastest-growing-tech-companies-silicon-review/",
+    "https://www.landbase.com/blog/fastest-growing-construction-tech-companies","https://grauberg.co/resources/project-management-startups","https://wellfound.com/startups/industry/workforce-management-2","https://dbbsoftware.com/insights/top-product-engineering-companies","https://explodingtopics.com/blog/project-management-startups","https://www.siit.io/blog/best-project-management-software-for-startups","https://topstartups.io/jobs/?role=Engineering+Manager","https://www.seedtable.com/best-task-management-startups","https://nextplayso.substack.com/p/41-of-the-fastest-growing-startups","https://firstlinesoftware.com/blog/30-fastest-growing-tech-companies-silicon-review/",
+  ]
+};
+
+const insights = {
+  ai:  "youtube.com is the #2 most-seen domain — AI engines are surfacing video content heavily for coding comparisons. blog.logrocket.com and secondtalent.com both outrank all brand-owned pages. augmentcode.com appears as both a competitor tool AND a domain hosting roundup content.",
+  dep: "digitalocean.com dominates with 14 appearances across Next.js, Docker, and Heroku queries — far ahead of anyone else. nextjs.org and vercel.com appear as competitor URLs even for their own-category queries (brands citing each other). dev.to accumulates 15+ appearances across multiple author slugs — the platform, not individuals, is the real competitor.",
+  db:  "koyeb.com is the most aggressive database content publisher — appearing 8× across free-tier and serverless queries despite not being a primary database product. youtube.com again ranks high (8 appearances). jakeprins.com, a single-author blog, outranks all database brands on the head-to-head Supabase vs Firebase query. github.com (gists + awesome lists) appears 5× — raw community lists are being treated as authoritative sources.",
+  pm:  "paymoapp.com is the runaway leader at 20 appearances — a single roundup article dominating the entire PM category. monday.com appears 17× as a competitor domain, making it the most-present brand not in the tracked set. youtube.com hits 18× across all PM queries. openproject.org owns the open-source Jira niche with 10 consistent appearances."
+};
+
+function getDomain(url) {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch { return url; }
+}
+
+function countDomains(urls) {
+  const counts = {};
+  urls.forEach(u => {
+    const d = getDomain(u);
+    counts[d] = (counts[d] || 0) + 1;
+  });
+  return Object.entries(counts).sort((a,b) => b[1]-a[1]).slice(0,10);
+}
+
+const barClasses = { ai:'ai-bar', dep:'dep-bar', db:'db-bar', pm:'pm-bar' };
+
+function renderCategory(cat) {
+  const ranked = countDomains(data[cat]);
+  const max = ranked[0][1];
+  const total = data[cat].length;
+  const container = document.getElementById('rows-' + cat);
+  container.innerHTML = ranked.map(([domain, count], i) => `
+    <div class="row">
+      <span class="rank">${i+1}</span>
+      <span class="domain" title="${domain}">${domain}</span>
+      <div class="bar-wrap"><div class="bar ${barClasses[cat]}" style="width:${Math.round(count/max*100)}%"></div></div>
+      <span class="count">${count}</span>
+      <span class="pct">${Math.round(count/total*100)}%</span>
+    </div>
+  `).join('');
+  document.getElementById('insight-' + cat).textContent = insights[cat];
+}
+
+['ai','dep','db','pm'].forEach(renderCategory);
+
+function show(cat) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('panel-' + cat).classList.add('active');
+  document.querySelector('.tab.' + cat).classList.add('active');
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+# How citation detection works
+
+When you run `aeo_check`, the tool sends your query to the Perplexity API using the `sonar` model. The response contains two things: an `answerText` string with the full generated answer, and a `citations` array of URLs that Perplexity used as sources. These two fields are independent — a URL can appear in citations without being mentioned in the answer text, and a brand can be named in the answer text without its domain appearing as a numbered citation.
+
+Detection works in two passes. First, every URL in the citations array is checked for the presence of `targetDomain` as a substring, case-insensitively. If any citation URL contains the domain, that is a URL match. Second, if `brandName` was provided, the answer text is searched for that string, again case-insensitively. If either match succeeds, `cited` is set to `true`.
+
+`position` is the index of the matching URL in Perplexity's citations array, zero-based. If the brand's domain appears at citations[0], position is 0. If the brand was detected only by name in the answer text — not as a numbered citation URL — position is null. This happens when Perplexity mentions a brand by name in its answer without citing its website as a source. Both cases produce `cited: true`, because both represent the brand appearing in the AI response.
+
+`competitorUrls` contains all citation URLs that do not match `targetDomain`. These are the pages Perplexity trusted as sources, not a list of competing brands. In practice they are mostly third-party roundup articles, comparison posts, official documentation pages, and YouTube videos. A URL appearing in `competitorUrls` means Perplexity treated that page as an authority for the query.
+
+The Perplexity API and the Perplexity web interface do not always return identical results. The API uses the `sonar` model; the web interface may use a different model configuration or apply additional personalisation. Results from this tool are directionally accurate and appropriate for trend tracking and competitive analysis, but they are not an exact measurement of what a specific user sees when they type the same query into the Perplexity web UI. Running the same query multiple times can also produce variation, because Perplexity's citation selection is not fully deterministic.

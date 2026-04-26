@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Competitor page signal analysis — open-aeo study</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    :root {
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      --color-background-primary: #ffffff;
+      --color-background-secondary: #f6f8fa;
+      --color-text-primary: #1f2328;
+      --color-text-secondary: #656d76;
+      --color-border-tertiary: #d0d7de;
+      --border-radius-md: 6px;
+    }
+    body { margin: 0; padding: 24px 32px; font-family: var(--font-sans); background: var(--color-background-primary); color: var(--color-text-primary); }
+    h1 { font-size: 18px; font-weight: 600; margin: 0 0 4px; }
+    .subtitle { font-size: 13px; color: var(--color-text-secondary); margin: 0 0 20px; }
+    .w { padding: 1rem 0; font-family: var(--font-sans); }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; table-layout: fixed; }
+    col.c-n    { width: 26px; }
+    col.c-brand{ width: 13%; }
+    col.c-query{ width: 26%; }
+    col.c-comp { width: 18%; }
+    col.c-wc   { width: 8%; }
+    col.c-hd   { width: 6%; }
+    col.c-faq  { width: 5%; }
+    col.c-faqsc{ width: 6%; }
+    col.c-art  { width: 6%; }
+    col.c-cmp  { width: 6%; }
+    col.c-lm   { width: 5%; }
+    thead th { background: var(--color-background-secondary); color: var(--color-text-secondary); font-weight: 500; padding: 7px 8px; text-align: left; border-bottom: 0.5px solid var(--color-border-tertiary); font-size: 11px; white-space: nowrap; overflow: hidden; }
+    tbody tr { border-bottom: 0.5px solid var(--color-border-tertiary); }
+    tbody tr:hover { background: var(--color-background-secondary); }
+    td { padding: 7px 8px; vertical-align: middle; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-text-primary); font-size: 11.5px; }
+    .yes { color: #3B6D11; font-weight: 500; }
+    .no  { color: var(--color-text-secondary); }
+    .brand { background: #EEF; color: #3C3489; border-radius: 4px; padding: 2px 6px; font-size: 11px; font-weight: 500; display: inline-block; }
+    .wc-hi  { color: #27500A; font-weight: 500; }
+    .wc-mid { color: #854F0B; }
+    .wc-lo  { color: #A32D2D; }
+    .scroll { overflow-x: auto; border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-md); }
+    .insight-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; }
+    .insight { border-radius: 8px; padding: 10px 14px; font-size: 12px; line-height: 1.5; }
+    .amber { background: #FAEEDA; color: #633806; }
+    .green { background: #EAF3DE; color: #27500A; }
+    .blue  { background: #E6F1FB; color: #0C447C; }
+    .red   { background: #FCEBEB; color: #791F1F; }
+    .insight strong { font-weight: 500; display: block; margin-bottom: 3px; }
+  </style>
+</head>
+<body>
+  <h1>Competitor page signal analysis</h1>
+  <p class="subtitle">10 cases where a brand was absent from Perplexity citations — what beat them and what signals those pages carried. From the 105-check open-aeo study.</p>
+
+  <div class="w">
+    <div class="scroll">
+      <table>
+        <colgroup>
+          <col class="c-n"><col class="c-brand"><col class="c-query"><col class="c-comp">
+          <col class="c-wc"><col class="c-hd"><col class="c-faq"><col class="c-faqsc">
+          <col class="c-art"><col class="c-cmp"><col class="c-lm">
+        </colgroup>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Brand missing</th>
+            <th>Query</th>
+            <th>Competitor that won</th>
+            <th>Words</th>
+            <th>H-tags</th>
+            <th>FAQ</th>
+            <th>FAQ schema</th>
+            <th>Article schema</th>
+            <th>Comp table</th>
+            <th>Updated</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="color:var(--color-text-secondary);">1</td>
+            <td><span class="brand">Cursor</span></td>
+            <td title="best AI tool for code review">best AI tool for code review</td>
+            <td style="color:var(--color-text-secondary);" title="blog.logrocket.com">blog.logrocket.com</td>
+            <td class="wc-mid">2,450</td>
+            <td>38</td>
+            <td class="no">✗</td>
+            <td class="no">✗</td>
+            <td class="no">✗</td>
+            <td class="yes">✓</td>
+            <td class="yes">✓</td>
+          </tr>
+          <tr>
+            <td style="color:var(--color-text-secondary);">2</td>
+            <td><span class="brand">Fly.io</span></td>
+            <td title="best platform for deploying Docker containers">best platform for deploying Docker containers</td>
+            <td style="color:var(--color-text-secondary);" title="digitalocean.com">digitalocean.com</td>
+            <td class="wc-lo">1,457</td>
+            <td>23</td>
+            <td class="yes">✓</td>
+            <td class="no">✗</td>
+            <td class="no">✗</td>
+            <td class="no">✗</td>
+            <td class="no">✗</td>
+          </tr>
+          <tr>
+            <td style="color:var(--color-text-secondary);">3</td>
+            <td><span class="brand">Linear</span></td>
+            <td title="best project management tool for software teams">best project mgmt tool for software teams</td>
+            <td style="color:var(--color-text-secondary);" title="paymoapp.com">paymoapp.com</td>
+            <td class="wc-hi">17,893</td>
+            <td>63</td>
+            <td class="no">✗</td>
+            <td class="no">✗</td>
+            <td class="no">✗</td>
+            <td class="no">✗</td>
+            <td class="yes">✓</td>
+          </tr>
+          <tr>
+            <td style="color:var(--color-text-secondary);">4</td>
+            <td><span class="brand">Supabase</span></td>
+            <td title="best database for building a SaaS product">best database for building a SaaS product</td>
+            <td style="color:var(--color-text-secondary);" title="acecloud.ai">acecloud.ai</td>
+            <td class="wc-mid">3,944</td>
+            <td>17</td>
+            <td class="yes">✓</td>
+            <td class="no">✗</td>
+            <td class="yes">✓</td>
+            <td class="yes">✓</td>
+            <td class="yes">✓</td>
+          </tr>
+          <tr>
+            <td style="color:var(--color-text-secondary);">5</td>
+            <td><span class="brand">Firebase</span></td>
+            <td title="best database for a Next.js app">best database for a Next.js app</td>
+            <td style="color:var(--color-text-secondary);" title="dev.to">dev.to</td>
+            <td class="wc-lo">1,263</td>
+            <td>15</td>
+            <td class="no">✗</td>
+            <td class="no">✗</td>
+            <td class="yes">✓</td>
+            <td class="no">✗</td>
+            <td class="yes">✓</td>
+          </tr>
+          <tr>
+            <td style="color:var(--color-text-secondary);">6</td>
+            <td><span class="brand">Render</span></td>
+            <td title="cheapest way to host a full stack web app">cheapest way to host a full stack web app</td>
+            <td style="color:var(--color-text-secondary);" title="dev.to/wasp">dev.to/wasp</td>
+            <td class="wc-mid">3,568</td>
+            <td>14</td>
+            <td class="no">✗</td>
+            <td class="no">✗</td>
+            <td class="yes">✓</td>
+            <td class="no">✗</td>
+            <td class="yes">✓</td>
+          </tr>
+          <tr>
+            <td style="color:var(--color-text-secondary);">7</td>
+            <td><span class="brand">Codeium</span></td>
+            <td title="best AI coding assistant for VS Code">best AI coding assistant for VS Code</td>
+            <td style="color:var(--color-text-secondary);" title="secondtalent.com">secondtalent.com</td>
+            <td class="wc-mid">4,415</td>
+            <td>80</td>
+            <td class="yes">✓</td>
+            <td class="yes">✓</td>
+            <td class="yes">✓</td>
+            <td class="no">✗</td>
+            <td class="yes">✓</td>
+          </tr>
+          <tr>
+            <td style="color:var(--color-text-secondary);">8</td>
+            <td><span class="brand">Tabnine</span></td>
+            <td title="Cursor vs GitHub Copilot which is better">Cursor vs GitHub Copilot which is better</td>
+            <td style="color:var(--color-text-secondary);" title="builder.io">builder.io</td>
+            <td class="wc-mid">2,679</td>
+            <td>53</td>
+            <td class="no">✗</td>
+            <td class="no">✗</td>
+            <td class="yes">✓</td>
+            <td class="no">✗</td>
+            <td class="yes">✓</td>
+          </tr>
+          <tr>
+            <td style="color:var(--color-text-secondary);">9</td>
+            <td><span class="brand">Neon</span></td>
+            <td title="best database for a Next.js app">best database for a Next.js app</td>
+            <td style="color:var(--color-text-secondary);" title="dev.to">dev.to</td>
+            <td class="wc-lo">1,263</td>
+            <td>15</td>
+            <td class="no">✗</td>
+            <td class="no">✗</td>
+            <td class="yes">✓</td>
+            <td class="no">✗</td>
+            <td class="yes">✓</td>
+          </tr>
+          <tr>
+            <td style="color:var(--color-text-secondary);">10</td>
+            <td><span class="brand">Plane</span></td>
+            <td title="best project management tool for software teams">best project mgmt tool for software teams</td>
+            <td style="color:var(--color-text-secondary);" title="paymoapp.com">paymoapp.com</td>
+            <td class="wc-hi">17,893</td>
+            <td>63</td>
+            <td class="no">✗</td>
+            <td class="no">✗</td>
+            <td class="no">✗</td>
+            <td class="no">✗</td>
+            <td class="yes">✓</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="insight-grid">
+      <div class="insight amber">
+        <strong>The depth trap — paymoapp.com (17,893 words)</strong>
+        Linear and Plane are being buried by a single exhaustive roundup. Pure content mass is winning even without schema markup, FAQs, or a comparison table. Neither brand has a page that competes on comprehensiveness.
+      </div>
+      <div class="insight blue">
+        <strong>secondtalent.com is the benchmark to beat</strong>
+        The highest-signal competitor page in the set: FAQ section + FAQPage schema + ArticleSchema + 80 headings + 4,415 words + freshness signal. That combination is why it dominates the VS Code query over Codeium, Tabnine, and others.
+      </div>
+      <div class="insight green">
+        <strong>Low bar for Docker / Next.js queries</strong>
+        Fly.io and Neon/Firebase lost to pages with only ~1,260–1,457 words and no schema at all. A single well-structured native page would likely flip these results — these are the quickest wins available.
+      </div>
+      <div class="insight red">
+        <strong>Schema adoption is near-zero across all competitors</strong>
+        Only 1 of 10 competitor pages (secondtalent.com) uses FAQPage schema. Yet that same page is the strongest performer. Adding FAQPage + Article schema is a high-leverage, low-effort move none of the losing brands are using either.
+      </div>
+    </div>
+  </div>
+</body>
+</html>
