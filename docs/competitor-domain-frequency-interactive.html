@@ -760,13 +760,11 @@ function showTab(cat) {
   document.querySelector('.tab.' + cat).classList.add('active');
 }
 
-document.addEventListener('DOMContentLoaded', function() {
-  ['ai','dep','db','pm'].forEach(renderCategory);
+['ai','dep','db','pm'].forEach(renderCategory);
 
-  document.querySelectorAll('.tab').forEach(function(tab) {
-    tab.addEventListener('click', function() {
-      showTab(this.dataset.cat);
-    });
+document.querySelectorAll('.tab').forEach(function(tab) {
+  tab.addEventListener('click', function() {
+    showTab(this.getAttribute('data-cat'));
   });
 });
 </script>
