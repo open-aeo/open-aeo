@@ -10,50 +10,26 @@ There are two ways to install open-aeo. The npx method is recommended — it tak
 
 ### Option 1 — npx (recommended)
 
-#### Claude Code
-
 Run this in your terminal:
 
 ```bash
 npx -y open-aeo install
 ```
 
-You will be prompted for your Perplexity API key. Once entered, the server is registered automatically. Restart Claude Code for the changes to take effect.
+The installer will:
+1. Prompt for your Perplexity API key
+2. Ask which client to configure — Claude Code, Claude Desktop, or both
+3. Write the configuration automatically
 
-To verify it worked:
+Restart Claude when it completes.
+
+To verify Claude Code picked it up:
 
 ```bash
 claude mcp list
 ```
 
 You should see `open-aeo` in the list.
-
----
-
-#### Claude Desktop
-
-Open your Claude Desktop configuration file:
-
-- **macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
-- **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
-
-Add the following block (create the file if it does not exist):
-
-```json
-{
-  "mcpServers": {
-    "open-aeo": {
-      "command": "npx",
-      "args": ["-y", "open-aeo"],
-      "env": {
-        "PERPLEXITY_API_KEY": "your-key-here"
-      }
-    }
-  }
-}
-```
-
-Replace `your-key-here` with your actual Perplexity API key, then restart Claude Desktop.
 
 ---
 
