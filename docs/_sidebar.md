@@ -1,4 +1,5 @@
 - [Getting started](getting-started.md)
+- [FAQ](faq.md)
 - [Tool reference](tools.md)
 - [How citation detection works](how-citation-detection-works.md)
 - [How content analysis works](how-content-analysis-works.md)
