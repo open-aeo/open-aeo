@@ -130,6 +130,26 @@ Override the storage location with `OPEN_AEO_STORE_PATH` (must be an absolute pa
 | `PERPLEXITY_API_KEY` | Yes | Your Perplexity API key. Get one at https://www.perplexity.ai/api-platform |
 | `OPEN_AEO_STORE_PATH` | No | Custom absolute path for data storage. Defaults to `~/.open-aeo/` |
 
+## FAQ
+
+**Why should I care about AI citations?**
+AI search engines are increasingly where people get direct answers instead of a list of links. If your brand is not cited in that answer, you are invisible to that user regardless of your Google ranking. Traditional SEO tools do not track this.
+
+**Why only Perplexity? What about ChatGPT and Gemini?**
+Perplexity came first because its API returns a clean `citations` array, making detection reliable. ChatGPT Search and Gemini Grounding have different API shapes. Multi-engine support is the next planned milestone — the codebase uses a port/adapter pattern so adding a new engine means implementing one interface.
+
+**How accurate is the citation detection?**
+The detection is precise — it checks Perplexity's citations array and the answer text directly. The limitation is that AI search is non-deterministic: the same query run twice can return different results. A single check is a snapshot. Running reports over time gives a reliable signal.
+
+**Does API output match what real users see?**
+Directionally yes, exactly no. The API uses the same model as the web product but without the web UI's additional ranking layer. Treat it as a reliable proxy, not a perfect mirror.
+
+**How much does it cost?**
+Perplexity charges ~$5 per 1,000 requests. A 20-query report costs around $0.10. A daily report across 50 queries runs around $75/year.
+
+**Is my data sent anywhere?**
+No. Everything is stored locally at `~/.open-aeo/`. No telemetry, no cloud sync.
+
 ## Documentation
 
 Full documentation is in the [`docs/`](docs/) folder, including tool reference, how citation detection works, storage reference, and study data with evidence charts.
