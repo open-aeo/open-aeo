@@ -1,7 +1,7 @@
 # open-aeo
 
 An open-source AEO (Answer Engine Optimization) citation monitor built as an MCP server.
-Track whether your domain is cited by AI answer engines like Perplexity — directly inside Claude.
+Track whether your domain is cited by AI answer engines like Perplexity, directly inside Claude.
 
 ## What it does
 
@@ -28,33 +28,11 @@ open-aeo is the self-hosted, open alternative — runs locally, costs cents per 
 
 ### Option 1 — npx (recommended)
 
-**Claude Code:**
-
 ```bash
 npx -y open-aeo install
 ```
 
-This prompts for your Perplexity API key and registers the server automatically. Restart Claude Code when done.
-
-**Claude Desktop:**
-
-Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows):
-
-```json
-{
-  "mcpServers": {
-    "open-aeo": {
-      "command": "npx",
-      "args": ["-y", "open-aeo"],
-      "env": {
-        "PERPLEXITY_API_KEY": "your-key-here"
-      }
-    }
-  }
-}
-```
-
-Restart Claude Desktop when done.
+This prompts for your Perplexity API key, asks whether you're using Claude Code, Claude Desktop, or both, and writes the configuration automatically. Restart Claude after it completes.
 
 ---
 
