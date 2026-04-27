@@ -1,8 +1,8 @@
 {
   "mcpServers": {
     "open-aeo": {
-      "command": "node",
-      "args": ["/absolute/path/to/open-aeo/dist/index.js"],
+      "command": "npx",
+      "args": ["-y", "open-aeo"],
       "env": {
         "PERPLEXITY_API_KEY": "your-perplexity-api-key-here"
       }

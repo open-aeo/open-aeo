@@ -1,8 +1,65 @@
 # Getting started
 
-You need four things before you can run open-aeo: Node 20 or higher, a Perplexity API key (https://www.perplexity.ai/api-platform), pnpm (npm and yarn also work), and Claude Desktop (https://claude.ai/download).
+You need three things before you can run open-aeo: Node.js 20 or higher, a Perplexity API key (https://www.perplexity.ai/api-platform), and Claude Desktop or Claude Code (https://claude.ai/download).
 
 ## Installation
+
+There are two ways to install open-aeo. The npx method is recommended — it takes one command and requires no manual config editing.
+
+---
+
+### Option 1 — npx (recommended)
+
+#### Claude Code
+
+Run this in your terminal:
+
+```bash
+npx -y open-aeo install
+```
+
+You will be prompted for your Perplexity API key. Once entered, the server is registered automatically. Restart Claude Code for the changes to take effect.
+
+To verify it worked:
+
+```bash
+claude mcp list
+```
+
+You should see `open-aeo` in the list.
+
+---
+
+#### Claude Desktop
+
+Open your Claude Desktop configuration file:
+
+- **macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
+
+Add the following block (create the file if it does not exist):
+
+```json
+{
+  "mcpServers": {
+    "open-aeo": {
+      "command": "npx",
+      "args": ["-y", "open-aeo"],
+      "env": {
+        "PERPLEXITY_API_KEY": "your-key-here"
+      }
+    }
+  }
+}
+```
+
+Replace `your-key-here` with your actual Perplexity API key, then restart Claude Desktop.
+
+---
+
+### Option 2 — manual (git clone)
+
+Use this if you want to modify the source or run a local build. Requires pnpm >= 9.
 
 ```bash
 git clone https://github.com/open-aeo/open-aeo.git
@@ -10,9 +67,7 @@ cd open-aeo
 pnpm install && pnpm run build
 ```
 
-## Configuration
-
-Add the following block to your Claude Desktop configuration file. On macOS the file is at `~/Library/Application Support/Claude/claude_desktop_config.json`. On Windows it is at `%APPDATA%\Claude\claude_desktop_config.json`.
+Then open your Claude Desktop configuration file and add:
 
 ```json
 {
@@ -28,11 +83,27 @@ Add the following block to your Claude Desktop configuration file. On macOS the 
 }
 ```
 
-Replace `/absolute/path/to/open-aeo` with the actual path where you cloned the repository. On macOS this is typically `/Users/yourname/open-aeo`.
+Replace `/absolute/path/to/open-aeo` with the actual path where you cloned the repo. On macOS this is typically `/Users/yourname/open-aeo`. Restart Claude Desktop when done.
+
+---
+
+## Verify the connection
+
+Start a new conversation in Claude and ask:
+
+```
+What MCP tools do you have available?
+```
+
+Claude will list all connected tools. You should see `aeo_check`, `aeo_report`, `aeo_history`, `aeo_analyse`, `aeo_recommend`, `aeo_gap_report`, and `aeo_gap_history`.
+
+You can also check **Settings → Developer** in Claude Desktop to confirm the server shows as connected.
+
+---
 
 ## First check
 
-Restart Claude Desktop, then type this into a new conversation:
+Try this in a new conversation:
 
 ```
 Use aeo_check with query "best project management tool for software teams"
@@ -53,10 +124,12 @@ Competitor URLs found:
 Checked at: 2026-04-25T09:24:06Z
 ```
 
-"Cited: NO" means neither linear.app appeared in Perplexity's citations array nor did the text "Linear" appear in its answer. If the domain had appeared in any citation URL, or if the brand name had appeared in the answer text, the result would be "Cited: YES" with a position number.
+"Cited: NO" means neither `linear.app` appeared in Perplexity's citations nor did the text "Linear" appear in its answer. If the domain or brand name had appeared, the result would be "Cited: YES" with a position number.
 
-The competitor URLs are the pages Perplexity used as sources when generating its answer — not competing brand homepages. Third-party roundup articles and comparison posts appear more often than brand homepages because Perplexity treats them as reliable aggregators of information. A URL appearing here means Perplexity trusted that page as a source, not that it recommends it as a product.
+The competitor URLs are the pages Perplexity used as sources — not competing brand homepages. Third-party roundup articles and comparison posts appear more often than brand homepages because Perplexity treats them as reliable aggregators. A URL appearing here means Perplexity trusted that page as a source.
+
+---
 
 ## Storage
 
-Results are saved automatically to `~/.open-aeo/history.json` on every check. The file is a plain JSON array and can be opened in any text editor or piped into `jq`. The directory is created on first write if it does not already exist.
+Results are saved automatically to `~/.open-aeo/history.json` on every check. The file is a plain JSON array and can be opened in any text editor or piped into `jq`. The directory is created on first write if it does not exist.
