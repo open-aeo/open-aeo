@@ -1,7 +1,7 @@
 # open-aeo
 
 An open-source AEO (Answer Engine Optimization) citation monitor built as an MCP server.
-Track whether your domain is cited by AI answer engines like Perplexity — directly inside Claude Desktop.
+Track whether your domain is cited by AI answer engines like Perplexity — directly inside Claude.
 
 ## What it does
 
@@ -10,6 +10,8 @@ Track whether your domain is cited by AI answer engines like Perplexity — dire
 - **`aeo_history`** — view historical citation data over time
 - **`aeo_analyse`** — fetch and analyse a competitor page that beat you
 - **`aeo_recommend`** — citation check plus prioritised content recommendations
+- **`aeo_gap_report`** — find queries where competitors are cited but you are not
+- **`aeo_gap_history`** — view historical gap analysis data
 
 ## Why
 
@@ -19,24 +21,54 @@ open-aeo is the self-hosted, open alternative — runs locally, costs cents per 
 ## Prerequisites
 
 - Node.js >= 20
-- pnpm >= 9
 - A [Perplexity API key](https://www.perplexity.ai/api-platform) (~$5/1K requests)
-- [Claude Desktop](https://claude.ai/download)
+- [Claude Desktop](https://claude.ai/download) or [Claude Code](https://claude.ai/code)
 
 ## Installation
+
+### Option 1 — npx (recommended)
+
+**Claude Code:**
+
+```bash
+npx -y open-aeo install
+```
+
+This prompts for your Perplexity API key and registers the server automatically. Restart Claude Code when done.
+
+**Claude Desktop:**
+
+Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows):
+
+```json
+{
+  "mcpServers": {
+    "open-aeo": {
+      "command": "npx",
+      "args": ["-y", "open-aeo"],
+      "env": {
+        "PERPLEXITY_API_KEY": "your-key-here"
+      }
+    }
+  }
+}
+```
+
+Restart Claude Desktop when done.
+
+---
+
+### Option 2 — manual (git clone)
+
+Requires pnpm >= 9.
 
 ```bash
 git clone https://github.com/open-aeo/open-aeo.git
 cd open-aeo
-pnpm install
-pnpm run build
+pnpm install && pnpm run build
 ```
 
-Replace `/absolute/path/to/open-aeo` in the config below with the actual path where you cloned the repository. On macOS this is typically `/Users/yourname/open-aeo`. On Windows use double backslashes or forward slashes.
-
-## Claude Desktop setup
-
-Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
+Then add to your Claude Desktop config (replacing the path):
 
 ```json
 {
@@ -52,7 +84,11 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 }
 ```
 
-Restart Claude Desktop. To verify, start a new conversation and ask: *"What MCP tools do you have available?"* — Claude will list all connected tools. You can also check Settings → Developer to confirm the server shows as connected.
+---
+
+## Verify
+
+Start a new conversation and ask: *"What MCP tools do you have available?"* — Claude will list all connected tools.
 
 ## Usage
 
@@ -62,6 +98,7 @@ Ask Claude:
 - *"Show me my citation history for last week"*
 - *"Analyse this competitor page that keeps beating me"*
 - *"What should I do to get cited for this query?"*
+- *"Find gaps where competitors are cited but I'm not"*
 
 ## Tools
 
@@ -70,6 +107,8 @@ Ask Claude:
 | `aeo_check` | Run a live citation check for one query. Returns whether your domain or brand was cited, its position, and which competitors appeared instead. |
 | `aeo_report` | Batch citation check across multiple queries. Returns a summary and per-query results. Adds a 2-second delay between requests to avoid rate limits. |
 | `aeo_history` | Retrieve past citation check results from local storage. Filterable by query and domain. |
+| `aeo_gap_report` | Run citation checks across a set of queries and return only those where competitors appear but your domain does not. |
+| `aeo_gap_history` | Retrieve historical gap analysis results from local storage. |
 | `aeo_analyse` | Fetch and analyse a specific competitor URL. Returns a structural breakdown of the page — FAQ sections, schema markup, content depth, freshness signals — so you understand why it was cited. |
 | `aeo_recommend` | Run a fresh citation check for a query, then automatically fetch and analyse the competitor pages that appeared instead of you. Returns a prioritised list of specific content and schema tasks to improve your citation chances. |
 
@@ -111,7 +150,7 @@ Override the storage location with `OPEN_AEO_STORE_PATH` (must be an absolute pa
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `PERPLEXITY_API_KEY` | Yes | Your Perplexity API key. Get one at https://www.perplexity.ai/api-platform |
-| `OPEN_AEO_STORE_PATH` | No | Custom absolute path for history.json. Defaults to `~/.open-aeo/history.json` |
+| `OPEN_AEO_STORE_PATH` | No | Custom absolute path for data storage. Defaults to `~/.open-aeo/` |
 
 ## Documentation
 
