@@ -45,5 +45,7 @@ export function parseAeoResponse(
     citedCount: cited ? 1 : 0,
     citationRate: cited ? 1 : 0,
     positions: position !== null ? [position] : [],
+    // A single sample has no spread (needs at least two cited positions).
+    positionSpread: null,
   };
 }

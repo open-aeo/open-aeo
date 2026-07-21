@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { aggregateCheckResults, medianPosition } from "../src/core/sampling.js";
+import {
+  aggregateCheckResults,
+  medianPosition,
+  standardDeviation,
+} from "../src/core/sampling.js";
 import { AeoCheckResult } from "../src/core/types.js";
 
 // Build one single-sample result, deriving the sampling fields the way
@@ -25,6 +29,7 @@ function oneSample(opts: {
     citedCount: cited ? 1 : 0,
     citationRate: cited ? 1 : 0,
     positions: position !== null ? [position] : [],
+    positionSpread: null,
   };
 }
 
@@ -42,6 +47,15 @@ describe("aggregateCheckResults", () => {
     expect(agg.cited).toBe(true);
     expect(agg.position).toBe(0); // best (lowest) among cited samples
     expect(agg.positions).toEqual([2, 0]);
+    expect(agg.positionSpread).toBe(1); // stddev of [2, 0]
+  });
+
+  it("has no spread when fewer than two samples cite", () => {
+    const agg = aggregateCheckResults([
+      oneSample({ cited: true, position: 3 }),
+      oneSample({ cited: false }),
+    ]);
+    expect(agg.positionSpread).toBe(null);
   });
 
   it("is not cited when no sample cited", () => {
@@ -77,6 +91,18 @@ describe("aggregateCheckResults", () => {
 
   it("throws on an empty sample list", () => {
     expect(() => aggregateCheckResults([])).toThrowError(/at least one sample/);
+  });
+});
+
+describe("standardDeviation", () => {
+  it("is small for steady values and large for jumpy ones", () => {
+    expect(standardDeviation([2, 2, 3])).toBe(0.47); // steady
+    expect(standardDeviation([1, 5, 9])).toBe(3.27); // jumpy
+  });
+
+  it("is null with fewer than two values", () => {
+    expect(standardDeviation([3])).toBe(null);
+    expect(standardDeviation([])).toBe(null);
   });
 });
 

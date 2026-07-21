@@ -31,6 +31,7 @@ export function aggregateCheckResults(
     cited: citedCount > 0,
     // Best (lowest-index) position observed across the samples that cited us.
     position: positions.length > 0 ? Math.min(...positions) : null,
+    positionSpread: standardDeviation(positions),
     competitorUrls,
     // Latest sample timestamp, so history sorts by when the check finished.
     timestamp: samples.reduce(
@@ -42,6 +43,18 @@ export function aggregateCheckResults(
     citationRate: sampleCount > 0 ? citedCount / sampleCount : 0,
     positions,
   };
+}
+
+// Population standard deviation of a set of values, rounded to two decimals.
+// Returns null for fewer than two values, where a spread is not defined. This is
+// the "how jumpy is the position between runs" number: small = steady, large =
+// luck of the draw.
+export function standardDeviation(values: number[]): number | null {
+  if (values.length < 2) return null;
+  const mean = values.reduce((sum, v) => sum + v, 0) / values.length;
+  const variance =
+    values.reduce((sum, v) => sum + (v - mean) ** 2, 0) / values.length;
+  return Math.round(Math.sqrt(variance) * 100) / 100;
 }
 
 // Median of the cited-sample positions, or null if never cited. Handy for

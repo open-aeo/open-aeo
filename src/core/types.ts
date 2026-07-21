@@ -31,6 +31,10 @@ export interface AeoCheckResult {
   citedCount: number; // how many of those samples cited the target
   citationRate: number; // citedCount / sampleCount, in [0, 1]
   positions: number[]; // position from each cited sample, for variance / median
+  // Spread (population standard deviation) of the cited positions: how jumpy the
+  // result is between runs. null when there are fewer than two cited positions,
+  // i.e. not enough data to have a spread. Old records read back as null.
+  positionSpread: number | null;
 }
 
 export interface GapTarget {
