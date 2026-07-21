@@ -116,7 +116,9 @@ export async function runSingleCheck(
   const sampleResults: AeoCheckResult[] = [];
   for (let i = 0; i < runs; i++) {
     const response = await engine.search(config.query);
-    sampleResults.push(parseAeoResponse(config, response, engine.name));
+    sampleResults.push(
+      parseAeoResponse(config, response, engine.name, engine.model),
+    );
     if (delayMs > 0 && i < runs - 1) await sleep(delayMs);
   }
   const aggregated = aggregateCheckResults(sampleResults);
@@ -155,8 +157,11 @@ function sleep(ms: number): Promise<void> {
 
 function formatCheckResult(result: AeoCheckResult): string[] {
   const rate = `${result.citedCount}/${result.sampleCount} runs (${Math.round(result.citationRate * 100)}%)`;
+  const engineLabel = result.model
+    ? `${result.engine} (${result.model})`
+    : result.engine;
   const lines = [
-    `Engine:        ${result.engine}`,
+    `Engine:        ${engineLabel}`,
     `Cited:         ${result.cited ? "YES" : "NO"} — ${rate}`,
   ];
   if (result.sampleCount > 1) {

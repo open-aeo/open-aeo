@@ -266,11 +266,7 @@ describe("buildRecommendationReport", () => {
       targetDomain: "hubspot.com",
       cited: false,
       position: null,
-      competitorUrls: [
-        "https://a.com",
-        "https://b.com",
-        "https://c.com",
-      ],
+      competitorUrls: ["https://a.com", "https://b.com", "https://c.com"],
       timestamp: new Date().toISOString(),
     };
 

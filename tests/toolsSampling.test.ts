@@ -16,6 +16,7 @@ function alternatingEngine(name: EngineName): IAnswerEngine {
   let call = 0;
   return {
     name,
+    model: "test-model",
     async search(): Promise<EngineResponse> {
       const cited = call % 2 === 0;
       call += 1;
@@ -62,6 +63,7 @@ describe("runSingleCheck with sampling", () => {
     expect(result.citationRate).toBe(0.5);
     expect(result.cited).toBe(true);
     expect(result.position).toBe(0);
+    expect(result.model).toBe("test-model");
     expect(result.competitorUrls).toContain("https://asana.com");
 
     // One aggregated row is saved, not one per sample.

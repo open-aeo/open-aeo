@@ -8,6 +8,7 @@ interface PerplexityResponse extends OpenAI.Chat.ChatCompletion {
 
 export class PerplexityApi implements IAnswerEngine {
   readonly name: EngineName = "perplexity";
+  readonly model = "sonar";
   private client: OpenAI;
 
   constructor(apiKey: string) {
@@ -21,7 +22,7 @@ export class PerplexityApi implements IAnswerEngine {
     try {
       const response: PerplexityResponse =
         await this.client.chat.completions.create({
-          model: "sonar",
+          model: this.model,
           messages: [
             {
               role: "system",

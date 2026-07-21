@@ -27,6 +27,7 @@ export function aggregateCheckResults(
     query: first.query,
     targetDomain: first.targetDomain,
     engine: first.engine,
+    model: first.model,
     cited: citedCount > 0,
     // Best (lowest-index) position observed across the samples that cited us.
     position: positions.length > 0 ? Math.min(...positions) : null,

@@ -11,6 +11,7 @@ export function parseAeoResponse(
   config: TargetConfig,
   response: EngineResponse,
   engine: EngineName = DEFAULT_ENGINE,
+  model = "",
 ): AeoCheckResult {
   const { targetDomain, query } = config;
   const { citations, answerText } = response;
@@ -32,6 +33,7 @@ export function parseAeoResponse(
     query,
     targetDomain,
     engine,
+    model,
     cited,
     position,
     competitorUrls: dedupeUrls(

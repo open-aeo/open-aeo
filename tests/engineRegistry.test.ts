@@ -6,6 +6,7 @@ import { EngineName, EngineResponse } from "../src/core/types.js";
 function fakeEngine(name: EngineName): IAnswerEngine {
   return {
     name,
+    model: `${name}-test`,
     async search(): Promise<EngineResponse> {
       return { answerText: `answer from ${name}`, citations: [] };
     },

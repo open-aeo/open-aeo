@@ -16,6 +16,7 @@ function oneSample(opts: {
     query: "best pm tool",
     targetDomain: "notion.so",
     engine: "perplexity",
+    model: "sonar",
     cited,
     position,
     competitorUrls: opts.competitors ?? [],

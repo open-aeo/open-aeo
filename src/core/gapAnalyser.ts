@@ -13,8 +13,13 @@ function sleep(ms: number): Promise<void> {
 }
 
 function generateRecommendation(gap: GapAnalysisResult): string {
-  const { confirmedGap, peecConfirmed, liveConfirmed, topCompetitorNow, gapTarget } =
-    gap;
+  const {
+    confirmedGap,
+    peecConfirmed,
+    liveConfirmed,
+    topCompetitorNow,
+    gapTarget,
+  } = gap;
   const { query, peecOpportunityScore } = gapTarget;
 
   if (confirmedGap) {
@@ -52,8 +57,14 @@ export async function analyseGap(
 ): Promise<GapAnalysisResult> {
   const response = await engine.search(gap.query);
   const liveCheck: AeoCheckResult = parseAeoResponse(
-    { query: gap.query, targetDomain: gap.targetDomain, brandName: gap.brandName },
+    {
+      query: gap.query,
+      targetDomain: gap.targetDomain,
+      brandName: gap.brandName,
+    },
     response,
+    engine.name,
+    engine.model,
   );
 
   const peecConfirmed = gap.source === "peec";
@@ -136,9 +147,15 @@ export async function runGapReport(
   }
 
   const confirmedGaps = results.filter((r) => r.confirmedGap).length;
-  const peecOnlyGaps = results.filter((r) => r.peecConfirmed && !r.liveConfirmed).length;
-  const liveOnlyGaps = results.filter((r) => !r.peecConfirmed && r.liveConfirmed).length;
-  const alreadyFixed = results.filter((r) => r.peecConfirmed && !r.liveConfirmed).length;
+  const peecOnlyGaps = results.filter(
+    (r) => r.peecConfirmed && !r.liveConfirmed,
+  ).length;
+  const liveOnlyGaps = results.filter(
+    (r) => !r.peecConfirmed && r.liveConfirmed,
+  ).length;
+  const alreadyFixed = results.filter(
+    (r) => r.peecConfirmed && !r.liveConfirmed,
+  ).length;
 
   return {
     targetDomain,
@@ -234,7 +251,11 @@ export function formatGapReport(summary: GapReportSummary): string {
       "",
     );
     closing.forEach((r, i) => {
-      lines.push(`${i + 1}. "${r.gapTarget.query}"`, `   -> ${r.recommendation}`, "");
+      lines.push(
+        `${i + 1}. "${r.gapTarget.query}"`,
+        `   -> ${r.recommendation}`,
+        "",
+      );
     });
   }
 

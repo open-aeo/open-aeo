@@ -19,6 +19,7 @@ export interface AeoCheckResult {
   query: string;
   targetDomain: string;
   engine: EngineName; // which answer engine produced this result
+  model: string; // the specific model behind that engine (e.g. "sonar", "gpt-4o")
   cited: boolean; // cited in at least one sample (citedCount > 0)
   position: number | null; // best (lowest) position among cited samples, null if never cited
   competitorUrls: string[]; // deduped union of competitors seen across samples

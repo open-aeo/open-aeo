@@ -14,6 +14,7 @@ import {
 function fakeEngine(name: EngineName, citations: string[]): IAnswerEngine {
   return {
     name,
+    model: `${name}-test`,
     async search(): Promise<EngineResponse> {
       return { answerText: "", citations };
     },
