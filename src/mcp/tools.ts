@@ -166,8 +166,10 @@ function formatCheckResult(result: AeoCheckResult): string[] {
   ];
   if (result.sampleCount > 1) {
     const med = medianPosition(result);
+    const spread =
+      result.positionSpread !== null ? ` ±${result.positionSpread}` : "";
     lines.push(
-      `Position:      best ${result.position ?? "N/A"}${med !== null ? `, median ${med}` : ""}`,
+      `Position:      best ${result.position ?? "N/A"}${med !== null ? `, median ${med}${spread}` : ""}`,
     );
   } else {
     lines.push(`Position:      ${result.position ?? "N/A"}`);
