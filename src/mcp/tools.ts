@@ -15,6 +15,12 @@ import {
   buildRecommendationReport,
 } from "../core/contentAnalyser.js";
 import { PageFetcher } from "../adapters/PageFetcher.js";
+import {
+  computeSourcesBreakdown,
+  SourcesBreakdown,
+  SourcesFilter,
+} from "../core/sourcesBreakdown.js";
+import { IQueryGenerator } from "../core/promptGenerator.js";
 
 export async function handleAeoGapReport(
   engine: IAnswerEngine,
@@ -407,4 +413,64 @@ export async function handleAeoReport(
       },
     ],
   };
+}
+
+// Shared by the MCP tool and the CLI `sources` command.
+export function formatSourcesBreakdown(
+  breakdown: SourcesBreakdown,
+  limit = 15,
+): string {
+  if (breakdown.checksAnalysed === 0) {
+    return "No stored checks yet — run some aeo_check / open-aeo check first.";
+  }
+  if (breakdown.domains.length === 0) {
+    return `Analysed ${breakdown.checksAnalysed} check(s) but found no competitor URLs.`;
+  }
+
+  const top = breakdown.domains.slice(0, limit);
+  const lines = [
+    `Top cited third-party domains`,
+    `${breakdown.totalCompetitorUrls} competitor URLs across ${breakdown.checksAnalysed} check(s) · ${breakdown.uniqueDomains} domains`,
+    ``,
+    ...top.map((source, index) => {
+      const queryCount = source.queries.length;
+      return `${String(index + 1).padStart(2)}. ${source.domain} — ${source.appearances} appearance(s) across ${queryCount} quer${queryCount === 1 ? "y" : "ies"}`;
+    }),
+    ``,
+    `These are the pages winning citations instead of you. Earning a mention on the top domains is often higher-leverage than editing your own page.`,
+  ];
+  return lines.join("\n");
+}
+
+export async function handleAeoSources(
+  storage: IStorage,
+  filter: SourcesFilter = {},
+  limit = 15,
+): Promise<{ content: Array<{ type: "text"; text: string }> }> {
+  const history = await storage.getHistory();
+  const breakdown = computeSourcesBreakdown(history, filter);
+  return {
+    content: [{ type: "text", text: formatSourcesBreakdown(breakdown, limit) }],
+  };
+}
+
+export async function handleAeoGenerateQueries(
+  generator: IQueryGenerator,
+  input: string,
+  count = 10,
+): Promise<{ content: Array<{ type: "text"; text: string }> }> {
+  const queries = await generator.generate(input, count);
+  if (queries.length === 0) {
+    return {
+      content: [{ type: "text", text: `No queries generated for "${input}".` }],
+    };
+  }
+  const text = [
+    `Generated ${queries.length} candidate quer${queries.length === 1 ? "y" : "ies"} for "${input}":`,
+    ``,
+    ...queries.map((query) => `  - ${query}`),
+    ``,
+    `Review these, then paste the ones worth tracking under \`queries:\` in your queries.yaml.`,
+  ].join("\n");
+  return { content: [{ type: "text", text }] };
 }
