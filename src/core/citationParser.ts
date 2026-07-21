@@ -5,6 +5,7 @@ import {
   EngineName,
   DEFAULT_ENGINE,
 } from "./types.js";
+import { urlMatchesDomain, dedupeUrls, mentionsBrand } from "./urlMatch.js";
 
 export function parseAeoResponse(
   config: TargetConfig,
@@ -15,13 +16,13 @@ export function parseAeoResponse(
   const { citations, answerText } = response;
 
   const citationIndex = citations.findIndex((url) =>
-    url.toLowerCase().includes(targetDomain.toLowerCase()),
+    urlMatchesDomain(url, targetDomain),
   );
 
   const citedInLinks = citationIndex !== -1;
 
   const citedInText = config.brandName
-    ? answerText.toLowerCase().includes(config.brandName.toLowerCase())
+    ? mentionsBrand(answerText, config.brandName)
     : false;
 
   return {
@@ -30,8 +31,8 @@ export function parseAeoResponse(
     engine,
     cited: citedInLinks || citedInText,
     position: citedInLinks ? citationIndex : null,
-    competitorUrls: citations.filter(
-      (url) => !url.toLowerCase().includes(targetDomain.toLowerCase()),
+    competitorUrls: dedupeUrls(
+      citations.filter((url) => !urlMatchesDomain(url, targetDomain)),
     ),
     timestamp: new Date().toISOString(),
   };
