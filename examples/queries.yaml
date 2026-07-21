@@ -1,9 +1,9 @@
 # open-aeo check config.
 #
-# Run it headlessly (no Claude Desktop):
+# Run it headlessly (no desktop app needed):
 #   PERPLEXITY_API_KEY=... npx open-aeo check --config queries.yaml
 #
-# Add OPENAI_API_KEY to also check ChatGPT.
+# Add OPENAI_API_KEY to also check the second engine.
 
 # The domain you want cited by AI answer engines.
 targetDomain: linear.app

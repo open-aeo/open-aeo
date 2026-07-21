@@ -12,41 +12,21 @@ import ora from "ora";
 function getClaudeDesktopConfigPath(): string {
   switch (process.platform) {
     case "win32":
-      return path.join(
-        process.env.APPDATA ?? "",
-        "Claude",
-        "claude_desktop_config.json",
-      );
+      return path.join(process.env.APPDATA ?? "", "Claude", "claude_desktop_config.json");
     case "linux":
-      return path.join(
-        os.homedir(),
-        ".config",
-        "Claude",
-        "claude_desktop_config.json",
-      );
+      return path.join(os.homedir(), ".config", "Claude", "claude_desktop_config.json");
     default:
-      return path.join(
-        os.homedir(),
-        "Library",
-        "Application Support",
-        "Claude",
-        "claude_desktop_config.json",
-      );
+      return path.join(os.homedir(), "Library", "Application Support", "Claude", "claude_desktop_config.json");
   }
 }
 
 function ask(rl: readline.Interface, question: string): Promise<string> {
-  return new Promise((resolve) =>
-    rl.question(question, (a) => resolve(a.trim())),
-  );
+  return new Promise((resolve) => rl.question(question, (a) => resolve(a.trim())));
 }
 
 function printBanner() {
   console.log();
-  console.log(
-    chalk.bold.cyan("  open-aeo") +
-      chalk.dim("  AEO citation monitor for Claude"),
-  );
+  console.log(chalk.bold.cyan("  open-aeo") + chalk.dim("  AEO citation monitor for Claude"));
   console.log(chalk.dim("  ─────────────────────────────────────"));
   console.log();
 }
@@ -54,10 +34,7 @@ function printBanner() {
 async function install() {
   printBanner();
 
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  });
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
 
   const apiKey = await ask(rl, chalk.bold("  Perplexity API key: "));
   if (!apiKey) {
@@ -78,10 +55,7 @@ async function install() {
   const installDesktop = choice === "2" || choice === "3";
 
   if (installClaudeCode) {
-    const spinner = ora({
-      text: "Registering with Claude Code…",
-      color: "cyan",
-    }).start();
+    const spinner = ora({ text: "Registering with Claude Code…", color: "cyan" }).start();
     try {
       execSync(
         `claude mcp add open-aeo -e PERPLEXITY_API_KEY=${apiKey} -- npx -y open-aeo`,
@@ -89,31 +63,20 @@ async function install() {
       );
       spinner.succeed(chalk.green("Registered with Claude Code"));
     } catch {
-      spinner.fail(
-        chalk.red(
-          "Failed to register with Claude Code — is the Claude CLI installed?",
-        ),
-      );
+      spinner.fail(chalk.red("Failed to register with Claude Code — is the Claude CLI installed?"));
     }
   }
 
   if (installDesktop) {
     const configPath = getClaudeDesktopConfigPath();
-    const spinner = ora({
-      text: "Writing Claude Desktop config…",
-      color: "cyan",
-    }).start();
+    const spinner = ora({ text: "Writing Claude Desktop config…", color: "cyan" }).start();
 
     let config: Record<string, unknown> = {};
     if (fs.existsSync(configPath)) {
       try {
         config = JSON.parse(fs.readFileSync(configPath, "utf-8"));
       } catch {
-        spinner.fail(
-          chalk.red(
-            `Could not parse config at ${configPath} — check it for JSON errors.`,
-          ),
-        );
+        spinner.fail(chalk.red(`Could not parse config at ${configPath} — check it for JSON errors.`));
         process.exit(1);
       }
     }
@@ -134,11 +97,8 @@ async function install() {
   }
 
   console.log();
-  console.log(
-    chalk.bold.green("  All done!") +
-      chalk.dim(" Restart Claude to apply the changes."),
-  );
-  console.log(chalk.dim('  Then ask: "What MCP tools do you have available?"'));
+  console.log(chalk.bold.green("  All done!") + chalk.dim(" Restart Claude to apply the changes."));
+  console.log(chalk.dim("  Then ask: \"What MCP tools do you have available?\""));
   console.log();
 }
 

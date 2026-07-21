@@ -42,8 +42,8 @@ function parseArgs(argv: string[]): CheckArgs {
 }
 
 // `open-aeo check --config queries.yaml [--json] [--samples N] [--fail-on-drop]`
-// Runs checks headlessly (no Claude Desktop) and exits non-zero when a tracked
-// target has dropped out of citations, so it can gate CI.
+// Runs checks headlessly (no desktop app or MCP host needed) and exits non-zero
+// when a tracked target has dropped out of citations, so it can gate CI.
 export async function runCheckCommand(argv: string[]): Promise<void> {
   const args = parseArgs(argv);
 
