@@ -2,6 +2,7 @@
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import {
   handleAeoCheck,
   handleAeoReport,
@@ -16,6 +17,7 @@ import {
 import { EngineName, GapTarget } from "../core/types.js";
 import { EngineRegistry } from "../core/engineRegistry.js";
 import { buildEngineRegistry } from "../core/engineFactory.js";
+import { IStorage } from "../ports/IStorage.js";
 import { JsonStorage } from "../adapters/JSONStorage.js";
 import { PageFetcher } from "../adapters/PageFetcher.js";
 import { LlmQueryGenerator } from "../adapters/LlmQueryGenerator.js";
@@ -46,26 +48,35 @@ function resolveDefaultSamples(): number {
   return DEFAULT_SAMPLES;
 }
 
+export interface AeoMcpServerOptions {
+  // Storage backend. Defaults to local JSON; hosted/Workers pass MemoryStorage
+  // (or a durable adapter later) since there is no filesystem.
+  storage?: IStorage;
+  // OpenAI key. On Node this defaults to process.env; on Workers, where env comes
+  // from bindings rather than process.env, the caller passes it explicitly.
+  openAiApiKey?: string;
+}
+
 export class AeoMcpServer {
   private server: McpServer;
   private registry: EngineRegistry;
-  private storage: JsonStorage;
+  private storage: IStorage;
   private fetcher: PageFetcher;
   private queryGenerator: LlmQueryGenerator;
 
-  constructor(apiKey: string) {
+  constructor(apiKey: string, options: AeoMcpServerOptions = {}) {
     // Perplexity is always available (its key is required to start the server).
     // Additional engines register only when their key is present, so the tool
     // set adapts to whatever the operator has configured. Shared with the CLI.
     this.registry = buildEngineRegistry({
       perplexityApiKey: apiKey,
-      openAiApiKey: process.env.OPENAI_API_KEY,
+      openAiApiKey: options.openAiApiKey ?? process.env.OPENAI_API_KEY,
     });
 
     // Query generation uses Perplexity by default (its key is always present).
     this.queryGenerator = new LlmQueryGenerator(apiKey);
 
-    this.storage = new JsonStorage();
+    this.storage = options.storage ?? new JsonStorage();
     this.fetcher = new PageFetcher();
     this.server = new McpServer({ name: "open-aeo", version: "1.0.0" });
     this.setupHandlers();
@@ -454,9 +465,15 @@ export class AeoMcpServer {
     );
   }
 
+  // Bind this server to a transport (stdio or HTTP). Each HTTP session builds a
+  // fresh AeoMcpServer and connects it to its own transport.
+  async connect(transport: Transport) {
+    await this.server.connect(transport);
+  }
+
   async run() {
     const transport = new StdioServerTransport();
-    await this.server.connect(transport);
+    await this.connect(transport);
     console.error("OpenAEO MCP Server running on stdio");
   }
 }

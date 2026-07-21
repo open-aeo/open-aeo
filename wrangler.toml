@@ -1,0 +1,16 @@
+# Cloudflare Workers config for the hosted open-aeo MCP server.
+#
+# Deploy:
+#   pnpm build
+#   npx wrangler secret put PERPLEXITY_API_KEY
+#   npx wrangler secret put OPENAI_API_KEY        # optional (enables ChatGPT)
+#   npx wrangler secret put OPEN_AEO_HTTP_TOKEN    # bearer token for /mcp
+#   npx wrangler deploy
+#
+# Then point an MCP client at https://<worker>.workers.dev/mcp with
+#   Authorization: Bearer <OPEN_AEO_HTTP_TOKEN>
+
+name = "open-aeo"
+main = "dist/worker.js"
+compatibility_date = "2025-06-01"
+compatibility_flags = ["nodejs_compat"]
