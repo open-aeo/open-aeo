@@ -46,14 +46,16 @@ function makeGapTarget(overrides: Partial<GapTarget> = {}): GapTarget {
   };
 }
 
-function makeGapAnalysisResult(overrides: {
-  confirmedGap?: boolean;
-  peecConfirmed?: boolean;
-  liveConfirmed?: boolean;
-  query?: string;
-  topCompetitorNow?: string | null;
-  peecOpportunityScore?: number;
-} = {}): GapAnalysisResult {
+function makeGapAnalysisResult(
+  overrides: {
+    confirmedGap?: boolean;
+    peecConfirmed?: boolean;
+    liveConfirmed?: boolean;
+    query?: string;
+    topCompetitorNow?: string | null;
+    peecOpportunityScore?: number;
+  } = {},
+): GapAnalysisResult {
   const {
     confirmedGap = false,
     peecConfirmed = false,
@@ -270,9 +272,9 @@ describe("runGapReport", () => {
   });
 
   it("throws if gaps array is empty", async () => {
-    await expect(
-      runGapReport(mockEngine, mockStorage, [], 0),
-    ).rejects.toThrow("No gap targets provided.");
+    await expect(runGapReport(mockEngine, mockStorage, [], 0)).rejects.toThrow(
+      "No gap targets provided.",
+    );
   });
 
   it("picks most common targetDomain when gaps have mixed domains", async () => {

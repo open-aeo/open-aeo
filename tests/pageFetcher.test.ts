@@ -59,7 +59,11 @@ describe("PageFetcher.fetch — signal extraction", () => {
       "<html><head><title>Best CRM Software 2025</title></head>" +
       "<body><p>Hello world this is a test paragraph that is long enough.</p></body></html>";
 
-    fetchMock.mockResolvedValue({ ok: true, status: 200, text: async () => html });
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: async () => html,
+    });
 
     const fetcher = new PageFetcher();
     const result = await fetcher.fetch("https://example.com/page");
@@ -70,11 +74,15 @@ describe("PageFetcher.fetch — signal extraction", () => {
 
   it("detects FAQ schema", async () => {
     const html =
-      '<html><head>' +
+      "<html><head>" +
       '<script type="application/ld+json">{"@type": "FAQPage", "mainEntity": []}</script>' +
       "</head><body><p>Some content here.</p></body></html>";
 
-    fetchMock.mockResolvedValue({ ok: true, status: 200, text: async () => html });
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: async () => html,
+    });
 
     const fetcher = new PageFetcher();
     const result = await fetcher.fetch("https://example.com/page");
@@ -90,7 +98,11 @@ describe("PageFetcher.fetch — signal extraction", () => {
       "<tr><td>Price</td><td>$10</td><td>$20</td></tr></table>" +
       "</body></html>";
 
-    fetchMock.mockResolvedValue({ ok: true, status: 200, text: async () => html });
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: async () => html,
+    });
 
     const fetcher = new PageFetcher();
     const result = await fetcher.fetch("https://example.com/page");
@@ -104,7 +116,11 @@ describe("PageFetcher.fetch — signal extraction", () => {
       "<table><tr><th>Name</th><th>Value</th></tr></table>" +
       "</body></html>";
 
-    fetchMock.mockResolvedValue({ ok: true, status: 200, text: async () => html });
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: async () => html,
+    });
 
     const fetcher = new PageFetcher();
     const result = await fetcher.fetch("https://example.com/page");
@@ -118,7 +134,11 @@ describe("PageFetcher.fetch — signal extraction", () => {
       "<h1>Title</h1><h2>Section</h2><h2>Section 2</h2><h3>Sub</h3>" +
       "</body></html>";
 
-    fetchMock.mockResolvedValue({ ok: true, status: 200, text: async () => html });
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: async () => html,
+    });
 
     const fetcher = new PageFetcher();
     const result = await fetcher.fetch("https://example.com/page");
@@ -132,7 +152,11 @@ describe("PageFetcher.fetch — signal extraction", () => {
       "<script>var x = 1;</script>" +
       "<p>Hello world foo bar</p>";
 
-    fetchMock.mockResolvedValue({ ok: true, status: 200, text: async () => html });
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: async () => html,
+    });
 
     const fetcher = new PageFetcher();
     const result = await fetcher.fetch("https://example.com/page");
@@ -146,7 +170,11 @@ describe("PageFetcher.fetch — signal extraction", () => {
       '<article><time datetime="2025-01-15">January 15, 2025</time>' +
       "<p>Content here that is long enough to be a paragraph.</p></article>";
 
-    fetchMock.mockResolvedValue({ ok: true, status: 200, text: async () => html });
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: async () => html,
+    });
 
     const fetcher = new PageFetcher();
     const result = await fetcher.fetch("https://example.com/page");
@@ -159,7 +187,11 @@ describe("PageFetcher.fetch — signal extraction", () => {
       "<p>Last updated: January 2025</p>" +
       "<p>This is a longer paragraph with real content in it.</p>";
 
-    fetchMock.mockResolvedValue({ ok: true, status: 200, text: async () => html });
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: async () => html,
+    });
 
     const fetcher = new PageFetcher();
     const result = await fetcher.fetch("https://example.com/page");
@@ -171,7 +203,11 @@ describe("PageFetcher.fetch — signal extraction", () => {
     const html =
       "<html><head></head><body><p>Plain page content here that is long enough.</p></body></html>";
 
-    fetchMock.mockResolvedValue({ ok: true, status: 200, text: async () => html });
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: async () => html,
+    });
 
     const fetcher = new PageFetcher();
     const result = await fetcher.fetch("https://example.com/page");
@@ -183,7 +219,11 @@ describe("PageFetcher.fetch — signal extraction", () => {
     const html =
       '<script type="application/ld+json">{ this is not valid json }</script>';
 
-    fetchMock.mockResolvedValue({ ok: true, status: 200, text: async () => html });
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: async () => html,
+    });
 
     const fetcher = new PageFetcher();
     const result = await fetcher.fetch("https://example.com/page");

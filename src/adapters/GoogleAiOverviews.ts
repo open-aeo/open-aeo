@@ -15,6 +15,7 @@ import { EngineName, EngineResponse } from "../core/types.js";
 // returning fake data.
 export class GoogleAiOverviews implements IAnswerEngine {
   readonly name: EngineName = "google-ai-overviews";
+  readonly model = "ai-overviews";
 
   async search(query: string): Promise<EngineResponse> {
     throw new Error(

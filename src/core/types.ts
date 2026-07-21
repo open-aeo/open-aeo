@@ -19,10 +19,18 @@ export interface AeoCheckResult {
   query: string;
   targetDomain: string;
   engine: EngineName; // which answer engine produced this result
-  cited: boolean;
-  position: number | null; // e.g., 0 if target is the first citation, null if we lost
-  competitorUrls: string[]; // If target lost, who won?
+  model: string; // the specific model behind that engine (e.g. "sonar", "gpt-4o")
+  cited: boolean; // cited in at least one sample (citedCount > 0)
+  position: number | null; // best (lowest) position among cited samples, null if never cited
+  competitorUrls: string[]; // deduped union of competitors seen across samples
   timestamp: string;
+  // Sampling fields. LLM answers are non-deterministic, so a check may run the
+  // same query N times and aggregate. A single-sample check has sampleCount 1,
+  // and old records without these fields read back as a single sample.
+  sampleCount: number; // number of samples aggregated into this result (>= 1)
+  citedCount: number; // how many of those samples cited the target
+  citationRate: number; // citedCount / sampleCount, in [0, 1]
+  positions: number[]; // position from each cited sample, for variance / median
 }
 
 export interface GapTarget {

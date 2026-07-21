@@ -9,8 +9,8 @@ import { EngineName, EngineResponse } from "../core/types.js";
 // about who is winning the query.
 export class OpenAiSearch implements IAnswerEngine {
   readonly name: EngineName = "chatgpt";
+  readonly model: string;
   private client: OpenAI;
-  private model: string;
 
   constructor(apiKey: string, model = "gpt-4o") {
     this.client = new OpenAI({ apiKey });
