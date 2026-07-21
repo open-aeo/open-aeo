@@ -1,0 +1,42 @@
+# Example GitHub Actions workflow for open-aeo.
+#
+# Copy this to .github/workflows/aeo-check.yml in your own repo, commit a
+# queries.yaml alongside it, and add PERPLEXITY_API_KEY (and optionally
+# OPENAI_API_KEY) as repository secrets.
+#
+# It runs on a weekly schedule and on demand, checks your tracked queries, and
+# fails the run if you have dropped out of citations since the last run.
+
+name: AEO citation check
+
+on:
+  schedule:
+    - cron: "0 8 * * 1" # every Monday at 08:00 UTC
+  workflow_dispatch: {}
+
+jobs:
+  aeo-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      # Persist history between runs so trend/drop detection works. The cache key
+      # rotates weekly; restore-keys falls back to the most recent prior cache.
+      - name: Restore open-aeo history
+        uses: actions/cache@v4
+        with:
+          path: .open-aeo
+          key: open-aeo-history-${{ github.run_id }}
+          restore-keys: |
+            open-aeo-history-
+
+      - name: Run AEO check
+        env:
+          PERPLEXITY_API_KEY: ${{ secrets.PERPLEXITY_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPEN_AEO_STORE_PATH: ${{ github.workspace }}/.open-aeo/history.json
+        run: npx -y open-aeo check --config queries.yaml --fail-on-drop

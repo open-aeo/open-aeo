@@ -2,8 +2,6 @@
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { PerplexityApi } from "../adapters/PerplexityApi.js";
-import { OpenAiSearch } from "../adapters/OpenAiSearch.js";
 import {
   handleAeoCheck,
   handleAeoReport,
@@ -15,6 +13,7 @@ import {
 } from "./tools.js";
 import { EngineName, GapTarget } from "../core/types.js";
 import { EngineRegistry } from "../core/engineRegistry.js";
+import { buildEngineRegistry } from "../core/engineFactory.js";
 import { JsonStorage } from "../adapters/JSONStorage.js";
 import { PageFetcher } from "../adapters/PageFetcher.js";
 import { z } from "zod";
@@ -53,14 +52,11 @@ export class AeoMcpServer {
   constructor(apiKey: string) {
     // Perplexity is always available (its key is required to start the server).
     // Additional engines register only when their key is present, so the tool
-    // set adapts to whatever the operator has configured.
-    this.registry = new EngineRegistry();
-    this.registry.register(new PerplexityApi(apiKey));
-
-    const openAiKey = process.env.OPENAI_API_KEY;
-    if (openAiKey && openAiKey.trim() !== "") {
-      this.registry.register(new OpenAiSearch(openAiKey));
-    }
+    // set adapts to whatever the operator has configured. Shared with the CLI.
+    this.registry = buildEngineRegistry({
+      perplexityApiKey: apiKey,
+      openAiApiKey: process.env.OPENAI_API_KEY,
+    });
 
     this.storage = new JsonStorage();
     this.fetcher = new PageFetcher();
