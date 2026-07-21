@@ -10,12 +10,15 @@ import {
   handleAeoGapHistory,
   handleAeoAnalyse,
   handleAeoRecommend,
+  handleAeoSources,
+  handleAeoGenerateQueries,
 } from "./tools.js";
 import { EngineName, GapTarget } from "../core/types.js";
 import { EngineRegistry } from "../core/engineRegistry.js";
 import { buildEngineRegistry } from "../core/engineFactory.js";
 import { JsonStorage } from "../adapters/JSONStorage.js";
 import { PageFetcher } from "../adapters/PageFetcher.js";
+import { LlmQueryGenerator } from "../adapters/LlmQueryGenerator.js";
 import { z } from "zod";
 
 // Engine names a caller may request. Whether an engine actually runs depends on
@@ -48,6 +51,7 @@ export class AeoMcpServer {
   private registry: EngineRegistry;
   private storage: JsonStorage;
   private fetcher: PageFetcher;
+  private queryGenerator: LlmQueryGenerator;
 
   constructor(apiKey: string) {
     // Perplexity is always available (its key is required to start the server).
@@ -57,6 +61,9 @@ export class AeoMcpServer {
       perplexityApiKey: apiKey,
       openAiApiKey: process.env.OPENAI_API_KEY,
     });
+
+    // Query generation uses Perplexity by default (its key is always present).
+    this.queryGenerator = new LlmQueryGenerator(apiKey);
 
     this.storage = new JsonStorage();
     this.fetcher = new PageFetcher();
@@ -360,6 +367,80 @@ export class AeoMcpServer {
             this.storage,
             { query, targetDomain, brandName },
             maxCompetitors,
+          );
+        } catch (error) {
+          const message =
+            error instanceof Error ? error.message : String(error);
+          return {
+            content: [{ type: "text" as const, text: `Error: ${message}` }],
+            isError: true,
+          };
+        }
+      },
+    );
+
+    this.server.registerTool(
+      "aeo_sources",
+      {
+        description:
+          "Rank the third-party domains that keep appearing as competitors across your stored checks — the pages winning citations instead of you. Optionally filter by target domain or query.",
+        inputSchema: {
+          targetDomain: z
+            .string()
+            .optional()
+            .describe("Filter to checks for this domain"),
+          query: z.string().optional().describe("Filter to a specific query"),
+          limit: z
+            .number()
+            .int()
+            .min(1)
+            .max(50)
+            .optional()
+            .describe("How many top domains to show (default 15)"),
+        },
+      },
+      async ({ targetDomain, query, limit }) => {
+        try {
+          return await handleAeoSources(
+            this.storage,
+            { targetDomain, query },
+            limit,
+          );
+        } catch (error) {
+          const message =
+            error instanceof Error ? error.message : String(error);
+          return {
+            content: [{ type: "text" as const, text: `Error: ${message}` }],
+            isError: true,
+          };
+        }
+      },
+    );
+
+    this.server.registerTool(
+      "aeo_generate_queries",
+      {
+        description:
+          "Generate a candidate list of queries to track from a domain or topic. Removes the blank-page problem of not knowing what to check. Review the output before saving.",
+        inputSchema: {
+          input: z
+            .string()
+            .describe("A domain or topic, e.g. 'linear.app' or 'AI note apps'"),
+          count: z
+            .number()
+            .int()
+            .min(1)
+            .max(25)
+            .optional()
+            .describe("How many queries to generate (default 10)"),
+        },
+      },
+      async ({ input, count }) => {
+        try {
+          return await handleAeoGenerateQueries(
+            this.queryGenerator,
+            input,
+            count,
           );
         } catch (error) {
           const message =

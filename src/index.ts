@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 import { AeoMcpServer } from "./mcp/server.js";
 import { runCheckCommand } from "./cli/checkCommand.js";
+import { runSourcesCommand } from "./cli/sourcesCommand.js";
+import { runGenerateCommand } from "./cli/generateCommand.js";
 import { execSync } from "child_process";
 import * as readline from "readline";
 import * as fs from "fs";
@@ -110,6 +112,16 @@ async function main() {
 
   if (process.argv[2] === "check") {
     await runCheckCommand(process.argv.slice(3));
+    return;
+  }
+
+  if (process.argv[2] === "sources") {
+    await runSourcesCommand(process.argv.slice(3));
+    return;
+  }
+
+  if (process.argv[2] === "generate") {
+    await runGenerateCommand(process.argv.slice(3));
     return;
   }
 
