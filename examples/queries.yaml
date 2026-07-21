@@ -1,0 +1,29 @@
+# open-aeo check config.
+#
+# Run it headlessly (no Claude Desktop):
+#   PERPLEXITY_API_KEY=... npx open-aeo check --config queries.yaml
+#
+# Add OPENAI_API_KEY to also check ChatGPT.
+
+# The domain you want cited by AI answer engines.
+targetDomain: linear.app
+
+# Optional. Counts a brand mention in the answer text as a citation even when the
+# domain is not linked.
+brandName: Linear
+
+# Optional. Which engines to check. Omit to use every engine whose key is set.
+# engines: [perplexity, chatgpt]
+
+# Optional. How many times to run each query per engine (citation rate). Default 3.
+samples: 3
+
+# Optional. Exit non-zero if a query that was cited last run is no longer cited.
+# Handy as a CI gate. Can also be forced with the --fail-on-drop flag.
+failOnDrop: true
+
+# The queries to check the target against.
+queries:
+  - best project management tool for software teams
+  - linear vs jira
+  - best issue tracker for startups
