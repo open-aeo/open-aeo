@@ -22,6 +22,10 @@ export class OpenAiSearch implements IAnswerEngine {
       const response = await this.client.responses.create({
         model: this.model,
         tools: [{ type: "web_search_preview" }],
+        // Force the search on every check. Left on "auto", the model often
+        // answers from its own knowledge and returns no citations, which is
+        // useless for AEO — we always want live sources for the query.
+        tool_choice: { type: "web_search_preview" },
         input: query,
       });
 
