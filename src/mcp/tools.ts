@@ -1,4 +1,5 @@
 import { parseAeoResponse } from "../core/citationParser.js";
+import { aggregateCheckResults, medianPosition } from "../core/sampling.js";
 import {
   AeoCheckResult,
   DEFAULT_ENGINE,
@@ -84,39 +85,64 @@ export async function handleAeoHistory(
   }
 
   const header = `History: ${history.length} results`;
-  const lines = history.map(
-    (r) =>
-      `${r.cited ? "✅" : "❌"} "${r.query}" [${r.engine ?? DEFAULT_ENGINE}] — ${r.targetDomain} — position: ${r.position ?? "N/A"} — ${new Date(r.timestamp).toLocaleDateString()}`,
-  );
+  const lines = history.map((r) => {
+    // Old records predate sampling; treat them as a single sample.
+    const samples = r.sampleCount ?? 1;
+    const citedCount = r.citedCount ?? (r.cited ? 1 : 0);
+    const rate =
+      samples > 1
+        ? ` — ${citedCount}/${samples} (${Math.round((r.citationRate ?? (r.cited ? 1 : 0)) * 100)}%)`
+        : "";
+    return `${r.cited ? "✅" : "❌"} "${r.query}" [${r.engine ?? DEFAULT_ENGINE}] — ${r.targetDomain} — position: ${r.position ?? "N/A"}${rate} — ${new Date(r.timestamp).toLocaleDateString()}`;
+  });
 
   return {
     content: [{ type: "text", text: [header, ...lines].join("\n") }],
   };
 }
 
+// Check one query against one engine `samples` times and save a single
+// aggregated result carrying the citation rate. LLM answers vary run to run, so
+// one sample is one roll of the dice; N samples make the number defensible. The
+// delay between samples keeps us under provider rate limits.
 export async function runSingleCheck(
   engine: IAnswerEngine,
   storage: IStorage,
   config: TargetConfig,
+  samples = 1,
+  delayMs = 0,
 ): Promise<AeoCheckResult> {
-  const response = await engine.search(config.query);
-  const result = parseAeoResponse(config, response, engine.name);
-  await storage.save(result);
-  return result;
+  const runs = Math.max(1, Math.floor(samples));
+  const sampleResults: AeoCheckResult[] = [];
+  for (let i = 0; i < runs; i++) {
+    const response = await engine.search(config.query);
+    sampleResults.push(parseAeoResponse(config, response, engine.name));
+    if (delayMs > 0 && i < runs - 1) await sleep(delayMs);
+  }
+  const aggregated = aggregateCheckResults(sampleResults);
+  await storage.save(aggregated);
+  return aggregated;
 }
 
-// Run one query against several engines, saving and returning a result per
-// engine. Each engine is checked in turn so a slow or failing engine does not
-// hide the others; the sleep between calls keeps us under provider rate limits.
+// Run one query against several engines, saving and returning an aggregated
+// result per engine. Each engine is checked in turn so a slow or failing engine
+// does not hide the others; the sleep between calls keeps us under rate limits.
 export async function runChecksAcrossEngines(
   engines: IAnswerEngine[],
   storage: IStorage,
   config: TargetConfig,
   delayMs = 0,
+  samples = 1,
 ): Promise<AeoCheckResult[]> {
   const results: AeoCheckResult[] = [];
   for (const engine of engines) {
-    const result = await runSingleCheck(engine, storage, config);
+    const result = await runSingleCheck(
+      engine,
+      storage,
+      config,
+      samples,
+      delayMs,
+    );
     results.push(result);
     if (delayMs > 0 && engine !== engines.at(-1)) await sleep(delayMs);
   }
@@ -128,13 +154,24 @@ function sleep(ms: number): Promise<void> {
 }
 
 function formatCheckResult(result: AeoCheckResult): string[] {
-  return [
+  const rate = `${result.citedCount}/${result.sampleCount} runs (${Math.round(result.citationRate * 100)}%)`;
+  const lines = [
     `Engine:        ${result.engine}`,
-    `Cited:         ${result.cited ? "YES" : "NO"}`,
-    `Position:      ${result.position ?? "N/A"}`,
+    `Cited:         ${result.cited ? "YES" : "NO"} — ${rate}`,
+  ];
+  if (result.sampleCount > 1) {
+    const med = medianPosition(result);
+    lines.push(
+      `Position:      best ${result.position ?? "N/A"}${med !== null ? `, median ${med}` : ""}`,
+    );
+  } else {
+    lines.push(`Position:      ${result.position ?? "N/A"}`);
+  }
+  lines.push(
     `Top Competitors Cited:`,
     ...result.competitorUrls.slice(0, 3).map((url, i) => `  ${i + 1}. ${url}`),
-  ];
+  );
+  return lines;
 }
 
 export async function handleAeoCheck(
@@ -142,12 +179,14 @@ export async function handleAeoCheck(
   storage: IStorage,
   config: TargetConfig,
   delayMs = 0,
+  samples = 1,
 ) {
   const results = await runChecksAcrossEngines(
     engines,
     storage,
     config,
     delayMs,
+    samples,
   );
 
   const citedIn = results.filter((r) => r.cited).map((r) => r.engine);

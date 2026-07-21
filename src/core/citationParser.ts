@@ -25,15 +25,23 @@ export function parseAeoResponse(
     ? mentionsBrand(answerText, config.brandName)
     : false;
 
+  const cited = citedInLinks || citedInText;
+  const position = citedInLinks ? citationIndex : null;
+
   return {
     query,
     targetDomain,
     engine,
-    cited: citedInLinks || citedInText,
-    position: citedInLinks ? citationIndex : null,
+    cited,
+    position,
     competitorUrls: dedupeUrls(
       citations.filter((url) => !urlMatchesDomain(url, targetDomain)),
     ),
     timestamp: new Date().toISOString(),
+    // A single response is one sample.
+    sampleCount: 1,
+    citedCount: cited ? 1 : 0,
+    citationRate: cited ? 1 : 0,
+    positions: position !== null ? [position] : [],
   };
 }

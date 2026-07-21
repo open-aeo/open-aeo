@@ -28,6 +28,22 @@ const engineNameSchema = z.enum([
   "google-ai-overviews",
 ]);
 
+// LLM answers are non-deterministic, so aeo_check samples the query a few times
+// and reports a citation rate. Default is a balance of signal vs API cost;
+// override per call with `samples` or globally with OPEN_AEO_SAMPLES.
+const DEFAULT_SAMPLES = 3;
+const MAX_SAMPLES = 10;
+// Pause between samples of the same query to stay under provider rate limits.
+const SAMPLE_DELAY_MS = 1500;
+
+function resolveDefaultSamples(): number {
+  const fromEnv = Number(process.env.OPEN_AEO_SAMPLES);
+  if (Number.isFinite(fromEnv) && fromEnv >= 1) {
+    return Math.min(MAX_SAMPLES, Math.floor(fromEnv));
+  }
+  return DEFAULT_SAMPLES;
+}
+
 export class AeoMcpServer {
   private server: McpServer;
   private registry: EngineRegistry;
@@ -78,14 +94,26 @@ export class AeoMcpServer {
             .describe(
               "Which answer engines to check. Omit to check all configured engines.",
             ),
+          samples: z
+            .number()
+            .int()
+            .min(1)
+            .max(MAX_SAMPLES)
+            .optional()
+            .describe(
+              `How many times to run the query per engine, reported as a citation rate. Default ${DEFAULT_SAMPLES} (or OPEN_AEO_SAMPLES).`,
+            ),
         },
       },
-      async ({ query, targetDomain, brandName, engines }) => {
+      async ({ query, targetDomain, brandName, engines, samples }) => {
         try {
+          const runs = samples ?? resolveDefaultSamples();
           return await handleAeoCheck(
             this.selectEngines(engines),
             this.storage,
             { query, targetDomain, brandName },
+            runs > 1 ? SAMPLE_DELAY_MS : 0,
+            runs,
           );
         } catch (error) {
           const message =
