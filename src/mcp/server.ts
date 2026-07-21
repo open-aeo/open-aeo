@@ -2,6 +2,7 @@
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import {
   handleAeoCheck,
   handleAeoReport,
@@ -454,9 +455,15 @@ export class AeoMcpServer {
     );
   }
 
+  // Bind this server to a transport (stdio or HTTP). Each HTTP session builds a
+  // fresh AeoMcpServer and connects it to its own transport.
+  async connect(transport: Transport) {
+    await this.server.connect(transport);
+  }
+
   async run() {
     const transport = new StdioServerTransport();
-    await this.server.connect(transport);
+    await this.connect(transport);
     console.error("OpenAEO MCP Server running on stdio");
   }
 }
