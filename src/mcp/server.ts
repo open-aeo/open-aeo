@@ -3,6 +3,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { PerplexityApi } from "../adapters/PerplexityApi.js";
+import { OpenAiSearch } from "../adapters/OpenAiSearch.js";
 import {
   handleAeoCheck,
   handleAeoReport,
@@ -12,30 +13,56 @@ import {
   handleAeoAnalyse,
   handleAeoRecommend,
 } from "./tools.js";
-import { GapTarget } from "../core/types.js";
+import { EngineName, GapTarget } from "../core/types.js";
+import { EngineRegistry } from "../core/engineRegistry.js";
 import { JsonStorage } from "../adapters/JSONStorage.js";
 import { PageFetcher } from "../adapters/PageFetcher.js";
 import { z } from "zod";
 
+// Engine names a caller may request. Whether an engine actually runs depends on
+// its API key being configured; the registry throws a clear error if a
+// requested engine is not available.
+const engineNameSchema = z.enum([
+  "perplexity",
+  "chatgpt",
+  "google-ai-overviews",
+]);
+
 export class AeoMcpServer {
   private server: McpServer;
-  private engine: PerplexityApi;
+  private registry: EngineRegistry;
   private storage: JsonStorage;
   private fetcher: PageFetcher;
 
   constructor(apiKey: string) {
-    this.engine = new PerplexityApi(apiKey);
+    // Perplexity is always available (its key is required to start the server).
+    // Additional engines register only when their key is present, so the tool
+    // set adapts to whatever the operator has configured.
+    this.registry = new EngineRegistry();
+    this.registry.register(new PerplexityApi(apiKey));
+
+    const openAiKey = process.env.OPENAI_API_KEY;
+    if (openAiKey && openAiKey.trim() !== "") {
+      this.registry.register(new OpenAiSearch(openAiKey));
+    }
+
     this.storage = new JsonStorage();
     this.fetcher = new PageFetcher();
     this.server = new McpServer({ name: "open-aeo", version: "1.0.0" });
     this.setupHandlers();
+  }
+
+  // Resolve a requested engine selection to configured engines, defaulting to
+  // every configured engine when none is specified.
+  private selectEngines(names?: EngineName[]) {
+    return this.registry.resolve(names);
   }
   private setupHandlers() {
     this.server.registerTool(
       "aeo_check",
       {
         description:
-          "Perform a live AEO citation check for a single query to see if a domain is cited by AI.",
+          "Perform a live AEO citation check for a single query to see if a domain is cited by AI answer engines. Runs across every configured engine by default, or the subset named in 'engines'.",
         inputSchema: {
           query: z
             .string()
@@ -45,15 +72,21 @@ export class AeoMcpServer {
             .string()
             .optional()
             .describe("Your brand name for text matching"),
+          engines: z
+            .array(engineNameSchema)
+            .optional()
+            .describe(
+              "Which answer engines to check. Omit to check all configured engines.",
+            ),
         },
       },
-      async ({ query, targetDomain, brandName }) => {
+      async ({ query, targetDomain, brandName, engines }) => {
         try {
-          return await handleAeoCheck(this.engine, this.storage, {
-            query,
-            targetDomain,
-            brandName,
-          });
+          return await handleAeoCheck(
+            this.selectEngines(engines),
+            this.storage,
+            { query, targetDomain, brandName },
+          );
         } catch (error) {
           const message =
             error instanceof Error ? error.message : String(error);
@@ -68,7 +101,8 @@ export class AeoMcpServer {
     this.server.registerTool(
       "aeo_report",
       {
-        description: "Run a batch AEO check for an array of multiple targets.",
+        description:
+          "Run a batch AEO check for an array of targets. Each target is checked against every configured engine by default, or the subset named in 'engines'.",
         inputSchema: {
           targets: z
             .array(
@@ -79,11 +113,21 @@ export class AeoMcpServer {
               }),
             )
             .describe("Array of targets to check"),
+          engines: z
+            .array(engineNameSchema)
+            .optional()
+            .describe(
+              "Which answer engines to check. Omit to check all configured engines.",
+            ),
         },
       },
-      async ({ targets }) => {
+      async ({ targets, engines }) => {
         try {
-          return await handleAeoReport(this.engine, this.storage, targets);
+          return await handleAeoReport(
+            this.selectEngines(engines),
+            this.storage,
+            targets,
+          );
         } catch (error) {
           const message =
             error instanceof Error ? error.message : String(error);
@@ -176,7 +220,7 @@ export class AeoMcpServer {
       async ({ gaps, delayMs }) => {
         try {
           return await handleAeoGapReport(
-            this.engine,
+            this.registry.primary(),
             this.storage,
             gaps as GapTarget[],
             delayMs,
@@ -229,17 +273,15 @@ export class AeoMcpServer {
             .string()
             .url()
             .describe("Full URL of the competitor page to analyse"),
-          query: z
-            .string()
-            .describe("The query this competitor ranks for"),
-          targetDomain: z
-            .string()
-            .describe("Your domain (e.g. 'acemate.ai')"),
+          query: z.string().describe("The query this competitor ranks for"),
+          targetDomain: z.string().describe("Your domain (e.g. 'acemate.ai')"),
           citationPosition: z
             .number()
             .int()
             .min(0)
-            .describe("0-based position at which this URL appears in AI citations"),
+            .describe(
+              "0-based position at which this URL appears in AI citations",
+            ),
         },
       },
       async ({ competitorUrl, query, targetDomain, citationPosition }) => {
@@ -269,12 +311,8 @@ export class AeoMcpServer {
         description:
           "Run a live AEO check and generate a prioritised list of content recommendations to improve citation chances. Fetches the top competitor pages, analyses their signals, and returns specific actionable tasks ranked by impact.",
         inputSchema: {
-          query: z
-            .string()
-            .describe("The search query to check and analyse"),
-          targetDomain: z
-            .string()
-            .describe("Your domain (e.g. 'acemate.ai')"),
+          query: z.string().describe("The search query to check and analyse"),
+          targetDomain: z.string().describe("Your domain (e.g. 'acemate.ai')"),
           brandName: z
             .string()
             .optional()
@@ -293,7 +331,7 @@ export class AeoMcpServer {
       async ({ query, targetDomain, brandName, maxCompetitors }) => {
         try {
           return await handleAeoRecommend(
-            this.engine,
+            this.registry.primary(),
             this.fetcher,
             this.storage,
             { query, targetDomain, brandName },

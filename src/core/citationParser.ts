@@ -1,8 +1,15 @@
-import { TargetConfig, EngineResponse, AeoCheckResult } from "./types.js";
+import {
+  TargetConfig,
+  EngineResponse,
+  AeoCheckResult,
+  EngineName,
+  DEFAULT_ENGINE,
+} from "./types.js";
 
 export function parseAeoResponse(
   config: TargetConfig,
   response: EngineResponse,
+  engine: EngineName = DEFAULT_ENGINE,
 ): AeoCheckResult {
   const { targetDomain, query } = config;
   const { citations, answerText } = response;
@@ -20,6 +27,7 @@ export function parseAeoResponse(
   return {
     query,
     targetDomain,
+    engine,
     cited: citedInLinks || citedInText,
     position: citedInLinks ? citationIndex : null,
     competitorUrls: citations.filter(

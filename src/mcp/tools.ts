@@ -1,6 +1,7 @@
 import { parseAeoResponse } from "../core/citationParser.js";
 import {
   AeoCheckResult,
+  DEFAULT_ENGINE,
   GapTarget,
   RecommendationReport,
   TargetConfig,
@@ -85,7 +86,7 @@ export async function handleAeoHistory(
   const header = `History: ${history.length} results`;
   const lines = history.map(
     (r) =>
-      `${r.cited ? "✅" : "❌"} "${r.query}" — ${r.targetDomain} — position: ${r.position ?? "N/A"} — ${new Date(r.timestamp).toLocaleDateString()}`,
+      `${r.cited ? "✅" : "❌"} "${r.query}" [${r.engine ?? DEFAULT_ENGINE}] — ${r.targetDomain} — position: ${r.position ?? "N/A"} — ${new Date(r.timestamp).toLocaleDateString()}`,
   );
 
   return {
@@ -99,21 +100,63 @@ export async function runSingleCheck(
   config: TargetConfig,
 ): Promise<AeoCheckResult> {
   const response = await engine.search(config.query);
-  const result = parseAeoResponse(config, response);
+  const result = parseAeoResponse(config, response, engine.name);
   await storage.save(result);
   return result;
+}
+
+// Run one query against several engines, saving and returning a result per
+// engine. Each engine is checked in turn so a slow or failing engine does not
+// hide the others; the sleep between calls keeps us under provider rate limits.
+export async function runChecksAcrossEngines(
+  engines: IAnswerEngine[],
+  storage: IStorage,
+  config: TargetConfig,
+  delayMs = 0,
+): Promise<AeoCheckResult[]> {
+  const results: AeoCheckResult[] = [];
+  for (const engine of engines) {
+    const result = await runSingleCheck(engine, storage, config);
+    results.push(result);
+    if (delayMs > 0 && engine !== engines.at(-1)) await sleep(delayMs);
+  }
+  return results;
 }
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function formatCheckResult(result: AeoCheckResult): string[] {
+  return [
+    `Engine:        ${result.engine}`,
+    `Cited:         ${result.cited ? "YES" : "NO"}`,
+    `Position:      ${result.position ?? "N/A"}`,
+    `Top Competitors Cited:`,
+    ...result.competitorUrls.slice(0, 3).map((url, i) => `  ${i + 1}. ${url}`),
+  ];
+}
+
 export async function handleAeoCheck(
-  engine: IAnswerEngine,
+  engines: IAnswerEngine[],
   storage: IStorage,
   config: TargetConfig,
+  delayMs = 0,
 ) {
-  const result = await runSingleCheck(engine, storage, config);
+  const results = await runChecksAcrossEngines(
+    engines,
+    storage,
+    config,
+    delayMs,
+  );
+
+  const citedIn = results.filter((r) => r.cited).map((r) => r.engine);
+  const summary =
+    citedIn.length > 0
+      ? `Cited in ${citedIn.length}/${results.length} engines (${citedIn.join(", ")}).`
+      : `Not cited in any of ${results.length} engine(s).`;
+
+  const blocks = results.map((result) => formatCheckResult(result).join("\n"));
 
   return {
     content: [
@@ -121,15 +164,11 @@ export async function handleAeoCheck(
         type: "text" as const,
         text: [
           `AEO Check Complete.`,
-          `Query:         "${result.query}"`,
-          `Target Domain: ${result.targetDomain}`,
-          `Cited:         ${result.cited ? "YES" : "NO"}`,
-          `Position:      ${result.position ?? "N/A"}`,
+          `Query:         "${config.query}"`,
+          `Target Domain: ${config.targetDomain}`,
+          `Summary:       ${summary}`,
           ``,
-          `Top Competitors Cited:`,
-          ...result.competitorUrls
-            .slice(0, 3)
-            .map((url, i) => `  ${i + 1}. ${url}`),
+          blocks.join("\n\n"),
         ].join("\n"),
       },
     ],
@@ -157,7 +196,9 @@ function formatRecommendationReport(report: RecommendationReport): string {
       const status = c.signals.fetchError
         ? `fetch error: ${c.signals.fetchError}`
         : `${c.signals.wordCount ?? "?"} words, ${c.signals.headingCount ?? "?"} headings`;
-      lines.push(`  ${c.citationPosition + 1}. ${c.competitorDomain} -- ${status}`);
+      lines.push(
+        `  ${c.citationPosition + 1}. ${c.competitorDomain} -- ${status}`,
+      );
     }
     lines.push(``);
   }
@@ -228,7 +269,9 @@ export async function handleAeoAnalyse(
   ];
 
   if (analysis.signals.schemaTypes.length > 0) {
-    lines.push(`  Schema types:     ${analysis.signals.schemaTypes.join(", ")}`);
+    lines.push(
+      `  Schema types:     ${analysis.signals.schemaTypes.join(", ")}`,
+    );
   }
 
   return { content: [{ type: "text", text: lines.join("\n") }] };
@@ -242,31 +285,51 @@ export async function handleAeoRecommend(
   maxCompetitors = 3,
 ): Promise<{ content: Array<{ type: "text"; text: string }> }> {
   const checkResult = await runSingleCheck(engine, storage, config);
-  const report = await buildRecommendationReport(fetcher, checkResult, maxCompetitors);
-  return { content: [{ type: "text", text: formatRecommendationReport(report) }] };
+  const report = await buildRecommendationReport(
+    fetcher,
+    checkResult,
+    maxCompetitors,
+  );
+  return {
+    content: [{ type: "text", text: formatRecommendationReport(report) }],
+  };
 }
 
 export async function handleAeoReport(
-  engine: IAnswerEngine,
+  engines: IAnswerEngine[],
   storage: IStorage,
   configs: TargetConfig[],
   delayMs = 2000,
 ) {
   type BatchEntry =
     | { ok: true; result: AeoCheckResult }
-    | { ok: false; query: string; error: string };
+    | { ok: false; query: string; engine: string; error: string };
+
+  // One check per (query, engine) pair, sequentially with a delay so we stay
+  // under each provider's rate limit. A failing engine is recorded per pair
+  // and does not abort the rest of the batch.
+  const tasks: Array<{ config: TargetConfig; engine: IAnswerEngine }> = [];
+  for (const config of configs) {
+    for (const engine of engines) {
+      tasks.push({ config, engine });
+    }
+  }
 
   const entries: BatchEntry[] = [];
-
-  for (const config of configs) {
+  for (const task of tasks) {
     try {
-      const result = await runSingleCheck(engine, storage, config);
+      const result = await runSingleCheck(task.engine, storage, task.config);
       entries.push({ ok: true, result });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      entries.push({ ok: false, query: config.query, error: message });
+      entries.push({
+        ok: false,
+        query: task.config.query,
+        engine: task.engine.name,
+        error: message,
+      });
     }
-    if (config !== configs.at(-1)) await sleep(delayMs);
+    if (task !== tasks.at(-1)) await sleep(delayMs);
   }
 
   const wins = entries.filter((e) => e.ok && e.result.cited).length;
@@ -275,20 +338,22 @@ export async function handleAeoReport(
 
   const lines = entries.map((e) =>
     e.ok
-      ? `${e.result.cited ? "✅" : "❌"}  "${e.result.query}" — ${
+      ? `${e.result.cited ? "✅" : "❌"}  "${e.result.query}" [${e.result.engine}] — ${
           e.result.cited
             ? `cited at position ${e.result.position}`
             : `not cited · top result: ${e.result.competitorUrls[0] ?? "none"}`
         }`
-      : `⚠️  "${e.query}" — error: ${e.error}`,
+      : `⚠️  "${e.query}" [${e.engine}] — error: ${e.error}`,
   );
+
+  const engineLabel = engines.map((engine) => engine.name).join(", ");
 
   return {
     content: [
       {
         type: "text" as const,
         text: [
-          `Batch Report — ${configs.length} queries`,
+          `Batch Report — ${configs.length} queries × ${engines.length} engine(s) [${engineLabel}]`,
           `✅ ${wins} cited  ❌ ${losses} not cited  ${errors > 0 ? `⚠️ ${errors} errors` : ""}`,
           ``,
           ...lines,

@@ -4,6 +4,12 @@ export interface TargetConfig {
   brandName?: string;
 }
 
+// Identifier for an answer engine. Each adapter reports its own name so
+// results can be attributed to the engine that produced them.
+export type EngineName = "perplexity" | "chatgpt" | "google-ai-overviews";
+
+export const DEFAULT_ENGINE: EngineName = "perplexity";
+
 export interface EngineResponse {
   answerText: string;
   citations: string[];
@@ -12,6 +18,7 @@ export interface EngineResponse {
 export interface AeoCheckResult {
   query: string;
   targetDomain: string;
+  engine: EngineName; // which answer engine produced this result
   cited: boolean;
   position: number | null; // e.g., 0 if target is the first citation, null if we lost
   competitorUrls: string[]; // If target lost, who won?
@@ -83,7 +90,12 @@ export interface CompetitorAnalysis {
 
 export interface RecommendedTask {
   priority: "high" | "medium" | "low";
-  category: "content-structure" | "schema-markup" | "content-depth" | "freshness" | "authority";
+  category:
+    | "content-structure"
+    | "schema-markup"
+    | "content-depth"
+    | "freshness"
+    | "authority";
   title: string;
   description: string;
   competitorEvidence: string;
