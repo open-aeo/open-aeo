@@ -45,4 +45,54 @@ describe("citationParser", () => {
     const result = parseAeoResponse(mockConfig, mockResponse);
     expect(result.cited).toBe(false);
   });
+
+  it("matches the target domain on a subdomain, not as a loose substring", () => {
+    const config: TargetConfig = {
+      query: "best pm tool",
+      targetDomain: "linear.app",
+    };
+    const response: EngineResponse = {
+      answerText: "See below.",
+      citations: [
+        "https://linear.app.spam.com/fake", // must NOT count as the target
+        "https://docs.linear.app/guide", // subdomain — must count
+      ],
+    };
+
+    const result = parseAeoResponse(config, response);
+    expect(result.cited).toBe(true);
+    expect(result.position).toBe(1); // the real subdomain, not the spam host
+    expect(result.competitorUrls).toEqual(["https://linear.app.spam.com/fake"]);
+  });
+
+  it("does not treat a brand embedded in another word as a mention", () => {
+    const response: EngineResponse = {
+      answerText: "Some developers structure their work linearly.",
+      citations: [],
+    };
+    const result = parseAeoResponse(
+      { query: "q", targetDomain: "linear.app", brandName: "Linear" },
+      response,
+    );
+    expect(result.cited).toBe(false);
+  });
+
+  it("de-duplicates competitor URLs that differ only by tracking params", () => {
+    const response: EngineResponse = {
+      answerText: "See below.",
+      citations: [
+        "https://asana.com/pm?utm_source=openai",
+        "https://www.asana.com/pm/",
+        "https://trello.com",
+      ],
+    };
+    const result = parseAeoResponse(
+      { query: "q", targetDomain: "notion.so" },
+      response,
+    );
+    expect(result.competitorUrls).toEqual([
+      "https://asana.com/pm?utm_source=openai",
+      "https://trello.com",
+    ]);
+  });
 });
