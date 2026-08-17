@@ -113,13 +113,17 @@ export async function handleAeoHistory(
 // waiting for the final aggregated result. Optional and additive — the MCP
 // tool handlers below don't pass one, so their behavior is unchanged.
 export type CheckProgressEvent =
-  | { type: "engine-start"; engine: EngineName }
+  | { type: "engine-start"; engine: EngineName; query: string }
   | {
       type: "sample";
       engine: EngineName;
       sampleIndex: number;
       totalSamples: number;
       cited: boolean;
+      // Not persisted to AeoCheckResult/storage — ephemeral, for a caller
+      // streaming live progress to show what the engine actually said.
+      answerPreview: string;
+      citationCount: number;
     }
   | { type: "result"; engine: EngineName; result: AeoCheckResult };
 
@@ -149,6 +153,8 @@ export async function runSingleCheck(
       sampleIndex: i + 1,
       totalSamples: runs,
       cited: parsed.cited,
+      answerPreview: response.answerText.slice(0, 500),
+      citationCount: response.citations.length,
     });
     if (delayMs > 0 && i < runs - 1) await sleep(delayMs);
   }
@@ -171,7 +177,7 @@ export async function runChecksAcrossEngines(
 ): Promise<AeoCheckResult[]> {
   const results: AeoCheckResult[] = [];
   for (const engine of engines) {
-    onProgress?.({ type: "engine-start", engine: engine.name });
+    onProgress?.({ type: "engine-start", engine: engine.name, query: config.query });
     const result = await runSingleCheck(
       engine,
       storage,
