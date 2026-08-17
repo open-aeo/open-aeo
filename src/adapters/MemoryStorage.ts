@@ -5,10 +5,9 @@ import {
   CompetitorAnalysis,
 } from "../core/types.js";
 
-// In-memory storage for environments without a filesystem (e.g. Cloudflare
-// Workers). It is per-instance and does NOT persist across requests — history
-// resets each time. A durable backend (D1/KV) is tracked in BRG-142; until then
-// the hosted Worker is stateless.
+// In-memory IStorage implementation. Per-instance and does NOT persist across
+// requests. The hosted Worker uses D1Storage instead (BRG-142); this remains
+// useful as a lightweight default for tests and non-persistent embeddings.
 export class MemoryStorage implements IStorage {
   private history: AeoCheckResult[] = [];
   private gapHistory: GapAnalysisResult[] = [];

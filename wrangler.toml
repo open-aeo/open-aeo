@@ -2,10 +2,13 @@
 #
 # Deploy:
 #   pnpm build
+#   npx wrangler d1 migrations apply open-aeo --remote   # first deploy / new migrations
 #   npx wrangler secret put PERPLEXITY_API_KEY
 #   npx wrangler secret put OPENAI_API_KEY        # optional (enables ChatGPT)
 #   npx wrangler secret put OPEN_AEO_HTTP_TOKEN    # bearer token for /mcp
 #   npx wrangler deploy
+#
+# Local dev: npx wrangler d1 migrations apply open-aeo --local, then wrangler dev.
 #
 # Then point an MCP client at https://<worker>.workers.dev/mcp with
 #   Authorization: Bearer <OPEN_AEO_HTTP_TOKEN>
@@ -14,3 +17,9 @@ name = "open-aeo"
 main = "dist/worker.js"
 compatibility_date = "2025-06-01"
 compatibility_flags = ["nodejs_compat"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "open-aeo"
+database_id = "f780c23a-ffd0-489f-8dbe-10353c94d733"
+migrations_dir = "migrations"
