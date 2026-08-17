@@ -41,6 +41,17 @@ export async function apiPost<T>(path: string, body: unknown): Promise<T> {
   return handleResponse<T>(res, path);
 }
 
+export async function apiDelete(path: string): Promise<void> {
+  const token = getAccessToken();
+  if (!token) throw new UnauthorizedError("Not logged in");
+
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  await handleResponse(res, path);
+}
+
 // Reads a newline-delimited JSON response body, calling onEvent as each
 // complete line arrives — for endpoints that stream progress instead of
 // waiting until the whole request is done (e.g. /api/run-check).
@@ -151,4 +162,28 @@ export type RunCheckStreamEvent =
 export interface KeyStatus {
   perplexity: boolean;
   openai: boolean;
+}
+
+export interface TrackedPrompt {
+  id: string;
+  query: string;
+  targetDomain: string;
+  brandName: string | null;
+  engines: RunnableEngine[];
+  createdAt: string;
+  lastResult: AeoCheckResult | null;
+  trend: TrendPoint[];
+}
+
+export interface CreatePromptRequest {
+  query: string;
+  targetDomain: string;
+  brandName?: string;
+  engines: RunnableEngine[];
+}
+
+export interface CompetitorsResponse {
+  yourCitedRate: number;
+  checksAnalysed: number;
+  domains: (SourceDomain & { shareOfChecks: number })[];
 }

@@ -1,43 +1,18 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   apiStream,
   type AeoCheckResult,
   type RunnableEngine,
   type RunCheckStreamEvent,
 } from "../lib/api";
+import { inputStyle, labelStyle, fieldStyle, engineLabel } from "../lib/formStyles";
+import { EngineCheckboxes } from "./EngineCheckboxes";
 
-const inputStyle: React.CSSProperties = {
-  width: "100%",
-  padding: "8px 10px",
-  fontSize: "var(--text-sm)",
-  fontFamily: "var(--font-sans)",
-  color: "var(--color-text-primary)",
-  background: "var(--color-bg)",
-  border: "1px solid var(--color-border)",
-  borderRadius: "var(--radius-md)",
-};
-
-const labelStyle: React.CSSProperties = {
-  display: "block",
-  fontSize: "var(--text-xs)",
-  color: "var(--color-text-secondary)",
-  marginBottom: "var(--space-1)",
-};
-
-const fieldStyle: React.CSSProperties = { marginBottom: "var(--space-4)" };
-
-const ENGINE_OPTIONS: { value: RunnableEngine; label: string }[] = [
-  { value: "perplexity", label: "Perplexity" },
-  { value: "chatgpt", label: "ChatGPT (web search)" },
-];
-
-const ENGINE_LABELS: Record<string, string> = {
-  perplexity: "Perplexity",
-  chatgpt: "ChatGPT",
-};
-
-function engineLabel(engine: string): string {
-  return ENGINE_LABELS[engine] ?? engine;
+export interface RunPrefill {
+  query: string;
+  targetDomain: string;
+  brandName: string;
+  engines: RunnableEngine[];
 }
 
 interface LogEntry {
@@ -80,7 +55,7 @@ function logEntries(event: RunCheckStreamEvent): LogEntry[] {
   }
 }
 
-export function RunCheck() {
+export function RunCheck({ prefill }: { prefill?: RunPrefill | null }) {
   const [query, setQuery] = useState("");
   const [targetDomain, setTargetDomain] = useState("");
   const [brandName, setBrandName] = useState("");
@@ -92,6 +67,14 @@ export function RunCheck() {
   const [results, setResults] = useState<AeoCheckResult[]>([]);
   const [log, setLog] = useState<LogEntry[]>([]);
   const logEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!prefill) return;
+    setQuery(prefill.query);
+    setTargetDomain(prefill.targetDomain);
+    setBrandName(prefill.brandName);
+    setEngines(prefill.engines);
+  }, [prefill]);
 
   function toggleEngine(value: RunnableEngine) {
     setEngines((prev) =>
@@ -189,28 +172,7 @@ export function RunCheck() {
         </div>
 
         <div style={fieldStyle}>
-          <span style={labelStyle}>Engines</span>
-          <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
-            {ENGINE_OPTIONS.map((opt) => (
-              <label
-                key={opt.value}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "var(--space-2)",
-                  fontSize: "var(--text-sm)",
-                  cursor: "pointer",
-                }}
-              >
-                <input
-                  type="checkbox"
-                  checked={engines.includes(opt.value)}
-                  onChange={() => toggleEngine(opt.value)}
-                />
-                {opt.label}
-              </label>
-            ))}
-          </div>
+          <EngineCheckboxes selected={engines} onToggle={toggleEngine} />
         </div>
 
         <div style={fieldStyle}>

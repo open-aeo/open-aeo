@@ -1,6 +1,7 @@
 import type { ExecutionContext } from "@cloudflare/workers-types";
 import { D1Storage } from "../adapters/D1Storage.js";
 import { D1KeyStore } from "../adapters/D1KeyStore.js";
+import { D1PromptStore } from "../adapters/D1PromptStore.js";
 import { KeyProvider } from "../ports/IKeyStore.js";
 import { buildEngineRegistry } from "../core/engineFactory.js";
 import {
@@ -48,7 +49,7 @@ function corsPreflight(): Response {
     status: 204,
     headers: {
       "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+      "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
       "Access-Control-Allow-Headers": "Authorization, Content-Type",
       "Access-Control-Max-Age": "86400",
     },
@@ -196,6 +197,91 @@ async function handleSetKey(
   return json({ ok: true });
 }
 
+async function handleListPrompts(env: Env, userId: string): Promise<Response> {
+  const promptStore = new D1PromptStore(env.DB, userId);
+  const storage = new D1Storage(env.DB, userId);
+  const prompts = await promptStore.list();
+
+  const withHistory = await Promise.all(
+    prompts.map(async (prompt) => {
+      const history = (await storage.getHistory(prompt.query)).filter(
+        (r) => r.targetDomain.toLowerCase() === prompt.targetDomain.toLowerCase(),
+      );
+      const lastResult = history.at(-1) ?? null;
+      const trend = computeTrend(history);
+      return { ...prompt, lastResult, trend };
+    }),
+  );
+
+  return json({ prompts: withHistory });
+}
+
+async function handleCreatePrompt(
+  request: Request,
+  env: Env,
+  userId: string,
+): Promise<Response> {
+  const body = (await request.json().catch(() => null)) as {
+    query?: string;
+    targetDomain?: string;
+    brandName?: string;
+    engines?: string[];
+  } | null;
+
+  if (!body?.query || !body.targetDomain) {
+    return json({ error: "query and targetDomain are required" }, 400);
+  }
+  const engines = (body.engines ?? []).filter((e): e is EngineName =>
+    RUNNABLE_ENGINES.includes(e as EngineName),
+  );
+  if (engines.length === 0) {
+    return json(
+      { error: `engines must include at least one of: ${RUNNABLE_ENGINES.join(", ")}` },
+      400,
+    );
+  }
+
+  const promptStore = new D1PromptStore(env.DB, userId);
+  const prompt = await promptStore.create({
+    query: body.query,
+    targetDomain: body.targetDomain,
+    brandName: body.brandName ?? null,
+    engines,
+  });
+  return json({ prompt }, 201);
+}
+
+async function handleDeletePrompt(
+  env: Env,
+  userId: string,
+  id: string,
+): Promise<Response> {
+  const promptStore = new D1PromptStore(env.DB, userId);
+  await promptStore.delete(id);
+  return json({ ok: true });
+}
+
+async function handleCompetitors(env: Env, userId: string): Promise<Response> {
+  const storage = new D1Storage(env.DB, userId);
+  const history = await storage.getHistory();
+  const breakdown = computeSourcesBreakdown(history);
+  const citedCount = history.filter((r) => r.cited).length;
+  const yourCitedRate = history.length > 0 ? citedCount / history.length : 0;
+
+  const domains = breakdown.domains.map((d) => ({
+    ...d,
+    // Share of your checks this domain showed up in, so it's directly
+    // comparable to yourCitedRate rather than a raw appearance count.
+    shareOfChecks: breakdown.checksAnalysed > 0 ? d.appearances / breakdown.checksAnalysed : 0,
+  }));
+
+  return json({
+    yourCitedRate,
+    checksAnalysed: breakdown.checksAnalysed,
+    domains,
+  });
+}
+
 export async function handleDashboardApiRequest(
   request: Request,
   env: Env,
@@ -221,6 +307,19 @@ export async function handleDashboardApiRequest(
   }
   if (request.method === "GET" && url.pathname === "/api/keys") {
     return handleGetKeys(env, userId);
+  }
+  if (request.method === "GET" && url.pathname === "/api/prompts") {
+    return handleListPrompts(env, userId);
+  }
+  if (request.method === "POST" && url.pathname === "/api/prompts") {
+    return handleCreatePrompt(request, env, userId);
+  }
+  const promptIdMatch = url.pathname.match(/^\/api\/prompts\/([^/]+)$/);
+  if (request.method === "DELETE" && promptIdMatch) {
+    return handleDeletePrompt(env, userId, promptIdMatch[1]);
+  }
+  if (request.method === "GET" && url.pathname === "/api/competitors") {
+    return handleCompetitors(env, userId);
   }
 
   if (request.method !== "GET") {
