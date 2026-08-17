@@ -24,6 +24,7 @@
     "d1:migrate:remote": "wrangler d1 migrations apply open-aeo --remote"
   },
   "dependencies": {
+    "@cloudflare/workers-oauth-provider": "^0.10.3",
     "@modelcontextprotocol/sdk": "^1.0.1",
     "chalk": "^5.6.2",
     "openai": "^4.0.0",

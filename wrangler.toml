@@ -1,17 +1,21 @@
 # Cloudflare Workers config for the hosted open-aeo MCP server.
 #
+# Auth is GitHub OAuth (BRG-143) — each user logs in via their MCP client's
+# "Add custom connector" flow and brings their own provider keys, set via the
+# aeo_set_api_key tool after login. There is no shared bearer token anymore.
+#
 # Deploy:
 #   pnpm build
 #   npx wrangler d1 migrations apply open-aeo --remote   # first deploy / new migrations
-#   npx wrangler secret put PERPLEXITY_API_KEY
-#   npx wrangler secret put OPENAI_API_KEY        # optional (enables ChatGPT)
-#   npx wrangler secret put OPEN_AEO_HTTP_TOKEN    # bearer token for /mcp
+#   npx wrangler secret put GITHUB_CLIENT_ID
+#   npx wrangler secret put GITHUB_CLIENT_SECRET
+#   npx wrangler secret put ENCRYPTION_SECRET     # 32+ random bytes, e.g. `openssl rand -base64 32`
 #   npx wrangler deploy
 #
 # Local dev: npx wrangler d1 migrations apply open-aeo --local, then wrangler dev.
 #
-# Then point an MCP client at https://<worker>.workers.dev/mcp with
-#   Authorization: Bearer <OPEN_AEO_HTTP_TOKEN>
+# Then point an MCP client's "Add custom connector" at
+# https://<worker>.workers.dev/mcp — no manual token/config needed.
 
 name = "open-aeo"
 main = "dist/worker.js"
@@ -23,3 +27,7 @@ binding = "DB"
 database_name = "open-aeo"
 database_id = "f780c23a-ffd0-489f-8dbe-10353c94d733"
 migrations_dir = "migrations"
+
+[[kv_namespaces]]
+binding = "OAUTH_KV"
+id = "bed409fedda84d8d8708ac28e46b757e"
