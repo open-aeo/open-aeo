@@ -1,15 +1,27 @@
 import { useEffect, useState } from "react";
 import { apiFetch, UnauthorizedError, type CompetitorsResponse } from "../lib/api";
 import { StatTile } from "./StatTile";
+import { inputStyle } from "../lib/formStyles";
 
 export function Competitors() {
   const [data, setData] = useState<CompetitorsResponse | null>(null);
+  // undefined = "let the server pick a default"; once it responds we pin the
+  // selector to whatever it picked, so switching domains afterward is fully
+  // controlled by this state instead of guessed server-side again.
+  const [selectedDomain, setSelectedDomain] = useState<string | undefined>(undefined);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    apiFetch<CompetitorsResponse>("/api/competitors")
-      .then(setData)
+    setLoading(true);
+    const qs = selectedDomain ? `?targetDomain=${encodeURIComponent(selectedDomain)}` : "";
+    apiFetch<CompetitorsResponse>(`/api/competitors${qs}`)
+      .then((res) => {
+        setData(res);
+        if (selectedDomain === undefined && res.targetDomain) {
+          setSelectedDomain(res.targetDomain);
+        }
+      })
       .catch((err) => {
         if (err instanceof UnauthorizedError) {
           window.location.href = "/";
@@ -18,7 +30,7 @@ export function Competitors() {
         setError(err instanceof Error ? err.message : String(err));
       })
       .finally(() => setLoading(false));
-  }, []);
+  }, [selectedDomain]);
 
   const topCompetitor = data?.domains[0];
 
@@ -36,6 +48,22 @@ export function Competitors() {
           }}
         >
           {error}
+        </div>
+      )}
+
+      {data && data.availableDomains.length > 0 && (
+        <div style={{ marginBottom: "var(--space-4)", maxWidth: 280 }}>
+          <select
+            style={inputStyle}
+            value={selectedDomain ?? ""}
+            onChange={(e) => setSelectedDomain(e.target.value)}
+          >
+            {data.availableDomains.map((domain) => (
+              <option key={domain} value={domain}>
+                {domain}
+              </option>
+            ))}
+          </select>
         </div>
       )}
 
@@ -100,7 +128,11 @@ export function Competitors() {
               fontSize: "var(--text-sm)",
             }}
           >
-            {loading ? "Loading…" : "No competitor domains yet."}
+            {loading
+              ? "Loading…"
+              : data && data.availableDomains.length === 0
+                ? "No checks yet."
+                : "No competitor domains yet for this domain."}
           </div>
         ) : (
           data.domains.map((d, i) => (

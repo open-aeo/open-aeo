@@ -261,9 +261,27 @@ async function handleDeletePrompt(
   return json({ ok: true });
 }
 
-async function handleCompetitors(env: Env, userId: string): Promise<Response> {
+async function handleCompetitors(
+  env: Env,
+  userId: string,
+  targetDomain: string | undefined,
+): Promise<Response> {
   const storage = new D1Storage(env.DB, userId);
-  const history = await storage.getHistory();
+  const allHistory = await storage.getHistory();
+
+  // "Competitors" only means something relative to one target domain — mixing
+  // checks for different domains together would merge unrelated competitor
+  // sets. Report the domains actually present so the client can offer a
+  // selector, and default to the first one if none was requested.
+  const availableDomains = [...new Set(allHistory.map((r) => r.targetDomain))].sort();
+  const selectedDomain = targetDomain ?? availableDomains[0];
+
+  const history = selectedDomain
+    ? allHistory.filter(
+        (r) => r.targetDomain.toLowerCase() === selectedDomain.toLowerCase(),
+      )
+    : [];
+
   const breakdown = computeSourcesBreakdown(history);
   const citedCount = history.filter((r) => r.cited).length;
   const yourCitedRate = history.length > 0 ? citedCount / history.length : 0;
@@ -276,6 +294,8 @@ async function handleCompetitors(env: Env, userId: string): Promise<Response> {
   }));
 
   return json({
+    targetDomain: selectedDomain ?? null,
+    availableDomains,
     yourCitedRate,
     checksAnalysed: breakdown.checksAnalysed,
     domains,
@@ -319,7 +339,8 @@ export async function handleDashboardApiRequest(
     return handleDeletePrompt(env, userId, promptIdMatch[1]);
   }
   if (request.method === "GET" && url.pathname === "/api/competitors") {
-    return handleCompetitors(env, userId);
+    const targetDomain = url.searchParams.get("targetDomain") ?? undefined;
+    return handleCompetitors(env, userId, targetDomain);
   }
 
   if (request.method !== "GET") {
