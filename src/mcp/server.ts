@@ -49,8 +49,8 @@ function resolveDefaultSamples(): number {
 }
 
 export interface AeoMcpServerOptions {
-  // Storage backend. Defaults to local JSON; hosted/Workers pass MemoryStorage
-  // (or a durable adapter later) since there is no filesystem.
+  // Storage backend. Defaults to local JSON; hosted/Workers pass D1Storage
+  // since there is no filesystem.
   storage?: IStorage;
   // OpenAI key. On Node this defaults to process.env; on Workers, where env comes
   // from bindings rather than process.env, the caller passes it explicitly.

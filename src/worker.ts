@@ -1,15 +1,18 @@
+import type { D1Database } from "@cloudflare/workers-types";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { AeoMcpServer } from "./mcp/server.js";
-import { MemoryStorage } from "./adapters/MemoryStorage.js";
+import { D1Storage } from "./adapters/D1Storage.js";
 
 // Cloudflare Workers entry point. Serves the open-aeo MCP tools over the
 // web-standard Streamable HTTP transport (Request -> Response), so the server can
 // be hosted on Workers. The Node `serve` command (mcp/httpServer.ts) is the
 // equivalent for container hosts; this is the fetch-based variant.
 //
-// Storage is in-memory and per-request (no filesystem on Workers), so history
-// does not persist yet — a durable D1/KV backend is tracked in BRG-142.
+// Storage is D1 (see migrations/0001_init.sql), bound as `DB` in wrangler.toml
+// (BRG-142). D1Storage is a stateless wrapper over the binding, so it is fine
+// to construct a fresh one per request.
 export interface Env {
+  DB: D1Database;
   PERPLEXITY_API_KEY: string;
   OPENAI_API_KEY?: string;
   OPEN_AEO_HTTP_TOKEN?: string;
@@ -57,7 +60,7 @@ export default {
         enableJsonResponse: true,
       });
       const mcp = new AeoMcpServer(env.PERPLEXITY_API_KEY, {
-        storage: new MemoryStorage(),
+        storage: new D1Storage(env.DB),
         openAiApiKey: env.OPENAI_API_KEY,
       });
       await mcp.connect(transport);
