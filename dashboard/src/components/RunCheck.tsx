@@ -1,5 +1,10 @@
-import { useState } from "react";
-import { apiPost, type AeoCheckResult, type RunnableEngine } from "../lib/api";
+import { useRef, useState } from "react";
+import {
+  apiStream,
+  type AeoCheckResult,
+  type RunnableEngine,
+  type RunCheckStreamEvent,
+} from "../lib/api";
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
@@ -26,6 +31,34 @@ const ENGINE_OPTIONS: { value: RunnableEngine; label: string }[] = [
   { value: "chatgpt", label: "ChatGPT (web search)" },
 ];
 
+const ENGINE_LABELS: Record<string, string> = {
+  perplexity: "Perplexity",
+  chatgpt: "ChatGPT",
+};
+
+function engineLabel(engine: string): string {
+  return ENGINE_LABELS[engine] ?? engine;
+}
+
+function logLine(event: RunCheckStreamEvent): string | null {
+  switch (event.type) {
+    case "engine-start":
+      return `→ ${engineLabel(event.engine)}: running…`;
+    case "sample":
+      return `   sample ${event.sampleIndex}/${event.totalSamples} — ${
+        event.cited ? "cited" : "not cited"
+      }`;
+    case "result":
+      return `✓ ${engineLabel(event.engine)}: done — ${event.result.citedCount}/${
+        event.result.sampleCount
+      } cited`;
+    case "error":
+      return `✗ error — ${event.message}`;
+    default:
+      return null;
+  }
+}
+
 export function RunCheck() {
   const [query, setQuery] = useState("");
   const [targetDomain, setTargetDomain] = useState("");
@@ -36,6 +69,8 @@ export function RunCheck() {
   const [error, setError] = useState<string | null>(null);
   const [skipped, setSkipped] = useState<string[]>([]);
   const [results, setResults] = useState<AeoCheckResult[]>([]);
+  const [log, setLog] = useState<string[]>([]);
+  const logEndRef = useRef<HTMLDivElement>(null);
 
   function toggleEngine(value: RunnableEngine) {
     setEngines((prev) =>
@@ -51,20 +86,27 @@ export function RunCheck() {
     }
     setError(null);
     setSkipped([]);
+    setLog([]);
     setRunning(true);
     try {
-      const { results: newResults, skipped: newSkipped } = await apiPost<{
-        results: AeoCheckResult[];
-        skipped: string[];
-      }>("/api/run-check", {
-        query,
-        targetDomain,
-        brandName: brandName || undefined,
-        engines,
-        samples,
-      });
-      setResults((prev) => [...newResults, ...prev]);
-      setSkipped(newSkipped);
+      await apiStream<RunCheckStreamEvent>(
+        "/api/run-check",
+        { query, targetDomain, brandName: brandName || undefined, engines, samples },
+        (event) => {
+          const line = logLine(event);
+          if (line) {
+            setLog((prev) => [...prev, line]);
+            logEndRef.current?.scrollIntoView({ behavior: "smooth" });
+          }
+          if (event.type === "result") {
+            setResults((prev) => [event.result, ...prev]);
+          } else if (event.type === "done") {
+            setSkipped(event.skipped);
+          } else if (event.type === "error") {
+            setError(event.message);
+          }
+        },
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -208,6 +250,44 @@ export function RunCheck() {
       </form>
 
       <div style={{ flex: 1, minWidth: 0 }}>
+        {(running || log.length > 0) && (
+          <div style={{ marginBottom: "var(--space-6)" }}>
+            <h2
+              style={{
+                fontSize: "var(--text-sm)",
+                fontWeight: 600,
+                color: "var(--color-text-secondary)",
+                marginBottom: "var(--space-3)",
+              }}
+            >
+              Activity
+            </h2>
+            <div
+              style={{
+                border: "1px solid var(--color-border)",
+                borderRadius: "var(--radius-lg)",
+                background: "var(--color-bg)",
+                padding: "var(--space-4)",
+                fontFamily: "var(--font-mono)",
+                fontSize: "var(--text-xs)",
+                color: "var(--color-text-secondary)",
+                maxHeight: 220,
+                overflowY: "auto",
+              }}
+            >
+              {log.map((line, i) => (
+                <div key={i} style={{ whiteSpace: "pre", lineHeight: 1.7 }}>
+                  {line}
+                </div>
+              ))}
+              {running && (
+                <div style={{ color: "var(--color-text-tertiary)" }}>…</div>
+              )}
+              <div ref={logEndRef} />
+            </div>
+          </div>
+        )}
+
         <h2
           style={{
             fontSize: "var(--text-sm)",
