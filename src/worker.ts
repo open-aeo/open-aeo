@@ -11,6 +11,7 @@ import { AeoMcpServer } from "./mcp/server.js";
 import { D1Storage } from "./adapters/D1Storage.js";
 import { D1KeyStore } from "./adapters/D1KeyStore.js";
 import { githubOAuthHandler } from "./mcp/githubOAuthHandler.js";
+import { handleDashboardApiRequest } from "./api/dashboardApiHandler.js";
 
 // Cloudflare Workers entry point. Serves the open-aeo MCP tools over the
 // web-standard Streamable HTTP transport (Request -> Response). Authenticated
@@ -81,8 +82,10 @@ async function handleMcpRequest(
 }
 
 export default new OAuthProvider<Env>({
-  apiRoute: "/mcp",
-  apiHandler: { fetch: handleMcpRequest },
+  apiHandlers: {
+    "/mcp": { fetch: handleMcpRequest },
+    "/api": { fetch: handleDashboardApiRequest },
+  },
   defaultHandler: githubOAuthHandler,
   authorizeEndpoint: "/authorize",
   tokenEndpoint: "/token",
