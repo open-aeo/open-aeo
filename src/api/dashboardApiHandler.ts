@@ -3,7 +3,10 @@ import { D1Storage } from "../adapters/D1Storage.js";
 import { D1KeyStore } from "../adapters/D1KeyStore.js";
 import { KeyProvider } from "../ports/IKeyStore.js";
 import { buildEngineRegistry } from "../core/engineFactory.js";
-import { runChecksAcrossEngines } from "../mcp/tools.js";
+import {
+  runChecksAcrossEngines,
+  type CheckProgressEvent,
+} from "../mcp/tools.js";
 import { computeSourcesBreakdown } from "../core/sourcesBreakdown.js";
 import { computeTrend } from "../core/trends.js";
 import { EngineName } from "../core/types.js";
@@ -52,9 +55,47 @@ function corsPreflight(): Response {
   });
 }
 
+// Streamed event shape, one JSON object per line (newline-delimited JSON).
+// Reuses CheckProgressEvent from runChecksAcrossEngines directly so the
+// stream reflects exactly what the shared check-running code emits, plus a
+// terminal "done" or "error" frame the client can key off to stop reading.
+type RunCheckStreamEvent =
+  | CheckProgressEvent
+  | { type: "done"; skipped: EngineName[] }
+  | { type: "error"; message: string };
+
+function ndjsonStream(
+  produce: (send: (event: RunCheckStreamEvent) => Promise<void>) => Promise<void>,
+  ctx: ExecutionContext,
+): Response {
+  const { readable, writable } = new TransformStream();
+  const writer = writable.getWriter();
+  const encoder = new TextEncoder();
+
+  const send = (event: RunCheckStreamEvent) =>
+    writer.write(encoder.encode(JSON.stringify(event) + "\n")).then(() => undefined);
+
+  const work = produce(send)
+    .catch(async (error: unknown) => {
+      const message = error instanceof Error ? error.message : String(error);
+      await send({ type: "error", message }).catch(() => {});
+    })
+    .finally(() => writer.close().catch(() => {}));
+  ctx.waitUntil(work);
+
+  return new Response(readable, {
+    headers: {
+      "content-type": "application/x-ndjson",
+      "Access-Control-Allow-Origin": "*",
+      "Cache-Control": "no-cache",
+    },
+  });
+}
+
 async function handleRunCheck(
   request: Request,
   env: Env,
+  ctx: ExecutionContext,
   userId: string,
 ): Promise<Response> {
   const body = (await request.json().catch(() => null)) as {
@@ -102,25 +143,22 @@ async function handleRunCheck(
     );
   }
   const engines = registry.resolve(configured);
+  const { query, targetDomain, brandName } = body;
 
-  const storage = new D1Storage(env.DB, userId);
-  try {
-    const results = await runChecksAcrossEngines(
+  return ndjsonStream(async (send) => {
+    const storage = new D1Storage(env.DB, userId);
+    await runChecksAcrossEngines(
       engines,
       storage,
-      {
-        query: body.query,
-        targetDomain: body.targetDomain,
-        brandName: body.brandName,
-      },
+      { query, targetDomain, brandName },
       samples > 1 || engines.length > 1 ? 1500 : 0,
       samples,
+      (event) => {
+        void send(event);
+      },
     );
-    return json({ results, skipped });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    return json({ error: message }, 502);
-  }
+    await send({ type: "done", skipped });
+  }, ctx);
 }
 
 async function handleGetKeys(env: Env, userId: string): Promise<Response> {
@@ -176,7 +214,7 @@ export async function handleDashboardApiRequest(
   const { userId } = props;
 
   if (request.method === "POST" && url.pathname === "/api/run-check") {
-    return handleRunCheck(request, env, userId);
+    return handleRunCheck(request, env, ctx, userId);
   }
   if (request.method === "POST" && url.pathname === "/api/keys") {
     return handleSetKey(request, env, userId);

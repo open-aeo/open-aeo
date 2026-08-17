@@ -41,6 +41,52 @@ export async function apiPost<T>(path: string, body: unknown): Promise<T> {
   return handleResponse<T>(res, path);
 }
 
+// Reads a newline-delimited JSON response body, calling onEvent as each
+// complete line arrives — for endpoints that stream progress instead of
+// waiting until the whole request is done (e.g. /api/run-check).
+export async function apiStream<E>(
+  path: string,
+  body: unknown,
+  onEvent: (event: E) => void,
+): Promise<void> {
+  const token = getAccessToken();
+  if (!token) throw new UnauthorizedError("Not logged in");
+
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (res.status === 401) {
+    logout();
+    throw new UnauthorizedError("Session expired");
+  }
+  if (!res.ok || !res.body) {
+    const errBody = (await res.json().catch(() => null)) as { error?: string } | null;
+    throw new Error(errBody?.error ?? `Request to ${path} failed: ${res.status}`);
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() ?? "";
+    for (const line of lines) {
+      if (line.trim()) onEvent(JSON.parse(line) as E);
+    }
+  }
+  if (buffer.trim()) onEvent(JSON.parse(buffer) as E);
+}
+
 // Mirrors src/core/types.ts (AeoCheckResult) — kept as a local, minimal type
 // rather than importing across the package boundary, since the dashboard is
 // a separate deployable that only ever sees this shape over JSON.
@@ -87,10 +133,18 @@ export interface RunCheckRequest {
   samples?: number;
 }
 
-export interface RunCheckResponse {
-  results: AeoCheckResult[];
-  skipped: string[];
-}
+export type RunCheckStreamEvent =
+  | { type: "engine-start"; engine: string }
+  | {
+      type: "sample";
+      engine: string;
+      sampleIndex: number;
+      totalSamples: number;
+      cited: boolean;
+    }
+  | { type: "result"; engine: string; result: AeoCheckResult }
+  | { type: "done"; skipped: string[] }
+  | { type: "error"; message: string };
 
 export interface KeyStatus {
   perplexity: boolean;
