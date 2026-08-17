@@ -76,33 +76,38 @@ export function TrendLine({ points }: { points: TrendPoint[] }) {
           stroke="var(--color-border)"
           strokeWidth={1}
         />
-        <path
-          d={path}
-          fill="none"
-          stroke="var(--color-accent)"
-          strokeWidth={2}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
+        {coords.length > 1 && (
+          <path
+            d={path}
+            fill="none"
+            stroke="var(--color-accent)"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        )}
+        {/* A single point has no line to show it (an "M" with no "L" draws
+            nothing) — always mark every point so the chart is never blank. */}
+        {coords.map((c, i) => (
+          <circle
+            key={i}
+            cx={c.x}
+            cy={c.y}
+            r={hoverIndex === i ? 4 : 2.5}
+            fill={hoverIndex === i ? "var(--color-accent)" : "var(--color-surface)"}
+            stroke="var(--color-accent)"
+            strokeWidth={hoverIndex === i ? 2 : 1.5}
+          />
+        ))}
         {hoveredCoord && (
-          <>
-            <line
-              x1={hoveredCoord.x}
-              y1={padding}
-              x2={hoveredCoord.x}
-              y2={height - padding}
-              stroke="var(--color-border-strong)"
-              strokeWidth={1}
-            />
-            <circle
-              cx={hoveredCoord.x}
-              cy={hoveredCoord.y}
-              r={4}
-              fill="var(--color-accent)"
-              stroke="var(--color-surface)"
-              strokeWidth={2}
-            />
-          </>
+          <line
+            x1={hoveredCoord.x}
+            y1={padding}
+            x2={hoveredCoord.x}
+            y2={height - padding}
+            stroke="var(--color-border-strong)"
+            strokeWidth={1}
+          />
         )}
       </svg>
       {hovered && hoveredCoord && (

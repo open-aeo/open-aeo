@@ -40,22 +40,43 @@ function engineLabel(engine: string): string {
   return ENGINE_LABELS[engine] ?? engine;
 }
 
-function logLine(event: RunCheckStreamEvent): string | null {
+interface LogEntry {
+  text: string;
+  muted?: boolean;
+}
+
+function logEntries(event: RunCheckStreamEvent): LogEntry[] {
   switch (event.type) {
     case "engine-start":
-      return `→ ${engineLabel(event.engine)}: running…`;
-    case "sample":
-      return `   sample ${event.sampleIndex}/${event.totalSamples} — ${
-        event.cited ? "cited" : "not cited"
-      }`;
+      return [{ text: `→ ${engineLabel(event.engine)}: running "${event.query}"…` }];
+    case "sample": {
+      const entries: LogEntry[] = [
+        {
+          text: `   sample ${event.sampleIndex}/${event.totalSamples} — ${
+            event.cited ? "cited" : "not cited"
+          } — ${event.citationCount} source${event.citationCount === 1 ? "" : "s"} in the answer`,
+        },
+      ];
+      if (event.answerPreview) {
+        entries.push({
+          text: `     "${event.answerPreview.replace(/\s+/g, " ").trim().slice(0, 220)}${event.answerPreview.length > 220 ? "…" : ""}"`,
+          muted: true,
+        });
+      }
+      return entries;
+    }
     case "result":
-      return `✓ ${engineLabel(event.engine)}: done — ${event.result.citedCount}/${
-        event.result.sampleCount
-      } cited`;
+      return [
+        {
+          text: `✓ ${engineLabel(event.engine)}: done — ${event.result.citedCount}/${
+            event.result.sampleCount
+          } cited`,
+        },
+      ];
     case "error":
-      return `✗ error — ${event.message}`;
+      return [{ text: `✗ error — ${event.message}` }];
     default:
-      return null;
+      return [];
   }
 }
 
@@ -69,7 +90,7 @@ export function RunCheck() {
   const [error, setError] = useState<string | null>(null);
   const [skipped, setSkipped] = useState<string[]>([]);
   const [results, setResults] = useState<AeoCheckResult[]>([]);
-  const [log, setLog] = useState<string[]>([]);
+  const [log, setLog] = useState<LogEntry[]>([]);
   const logEndRef = useRef<HTMLDivElement>(null);
 
   function toggleEngine(value: RunnableEngine) {
@@ -93,9 +114,9 @@ export function RunCheck() {
         "/api/run-check",
         { query, targetDomain, brandName: brandName || undefined, engines, samples },
         (event) => {
-          const line = logLine(event);
-          if (line) {
-            setLog((prev) => [...prev, line]);
+          const entries = logEntries(event);
+          if (entries.length > 0) {
+            setLog((prev) => [...prev, ...entries]);
             logEndRef.current?.scrollIntoView({ behavior: "smooth" });
           }
           if (event.type === "result") {
@@ -271,13 +292,21 @@ export function RunCheck() {
                 fontFamily: "var(--font-mono)",
                 fontSize: "var(--text-xs)",
                 color: "var(--color-text-secondary)",
-                maxHeight: 220,
+                maxHeight: 340,
                 overflowY: "auto",
               }}
             >
-              {log.map((line, i) => (
-                <div key={i} style={{ whiteSpace: "pre", lineHeight: 1.7 }}>
-                  {line}
+              {log.map((entry, i) => (
+                <div
+                  key={i}
+                  style={{
+                    whiteSpace: "pre-wrap",
+                    lineHeight: 1.7,
+                    color: entry.muted ? "var(--color-text-tertiary)" : undefined,
+                    fontStyle: entry.muted ? "italic" : undefined,
+                  }}
+                >
+                  {entry.text}
                 </div>
               ))}
               {running && (

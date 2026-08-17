@@ -134,13 +134,15 @@ export interface RunCheckRequest {
 }
 
 export type RunCheckStreamEvent =
-  | { type: "engine-start"; engine: string }
+  | { type: "engine-start"; engine: string; query: string }
   | {
       type: "sample";
       engine: string;
       sampleIndex: number;
       totalSamples: number;
       cited: boolean;
+      answerPreview: string;
+      citationCount: number;
     }
   | { type: "result"; engine: string; result: AeoCheckResult }
   | { type: "done"; skipped: string[] }
