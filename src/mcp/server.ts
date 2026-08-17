@@ -18,6 +18,7 @@ import { EngineName, GapTarget } from "../core/types.js";
 import { EngineRegistry } from "../core/engineRegistry.js";
 import { buildEngineRegistry } from "../core/engineFactory.js";
 import { IStorage } from "../ports/IStorage.js";
+import { IKeyStore } from "../ports/IKeyStore.js";
 import { JsonStorage } from "../adapters/JSONStorage.js";
 import { PageFetcher } from "../adapters/PageFetcher.js";
 import { LlmQueryGenerator } from "../adapters/LlmQueryGenerator.js";
@@ -55,6 +56,11 @@ export interface AeoMcpServerOptions {
   // OpenAI key. On Node this defaults to process.env; on Workers, where env comes
   // from bindings rather than process.env, the caller passes it explicitly.
   openAiApiKey?: string;
+  // Per-user provider key store. Only the hosted/Workers server (authenticated
+  // via GitHub OAuth, BRG-143) passes one; when present, an extra
+  // aeo_set_api_key tool is registered so a user can configure their own keys.
+  // The Node CLI passes none, so local single-user usage is unchanged.
+  keyStore?: IKeyStore;
 }
 
 export class AeoMcpServer {
@@ -63,6 +69,7 @@ export class AeoMcpServer {
   private storage: IStorage;
   private fetcher: PageFetcher;
   private queryGenerator: LlmQueryGenerator;
+  private keyStore?: IKeyStore;
 
   constructor(apiKey: string, options: AeoMcpServerOptions = {}) {
     // Perplexity is always available (its key is required to start the server).
@@ -78,6 +85,7 @@ export class AeoMcpServer {
 
     this.storage = options.storage ?? new JsonStorage();
     this.fetcher = new PageFetcher();
+    this.keyStore = options.keyStore;
     this.server = new McpServer({ name: "open-aeo", version: "1.0.0" });
     this.setupHandlers();
   }
@@ -463,6 +471,40 @@ export class AeoMcpServer {
         }
       },
     );
+
+    if (this.keyStore) {
+      const keyStore = this.keyStore;
+      this.server.registerTool(
+        "aeo_set_api_key",
+        {
+          description:
+            "Set your own provider API key for the hosted server, so checks run against your budget rather than a shared one. The key is encrypted at rest and never echoed back.",
+          inputSchema: {
+            provider: z
+              .enum(["perplexity", "openai"])
+              .describe("Which provider this key is for"),
+            apiKey: z.string().min(1).describe("The API key value"),
+          },
+        },
+        async ({ provider, apiKey }) => {
+          try {
+            await keyStore.setKey(provider, apiKey);
+            return {
+              content: [
+                { type: "text" as const, text: `${provider} key saved.` },
+              ],
+            };
+          } catch (error) {
+            const message =
+              error instanceof Error ? error.message : String(error);
+            return {
+              content: [{ type: "text" as const, text: `Error: ${message}` }],
+              isError: true,
+            };
+          }
+        },
+      );
+    }
   }
 
   // Bind this server to a transport (stdio or HTTP). Each HTTP session builds a

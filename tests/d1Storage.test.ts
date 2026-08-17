@@ -1,50 +1,11 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import Database from "better-sqlite3";
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
-import type { D1Database } from "@cloudflare/workers-types";
 import { D1Storage } from "../src/adapters/D1Storage.js";
+import { createFakeD1 } from "./helpers/fakeD1.js";
 import {
   AeoCheckResult,
   GapAnalysisResult,
   CompetitorAnalysis,
 } from "../src/core/types.js";
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const migrationSql = readFileSync(
-  join(__dirname, "../migrations/0001_init.sql"),
-  "utf-8",
-);
-
-// Minimal shim exposing only the D1Database surface D1Storage calls, backed by
-// a real in-memory SQLite engine (better-sqlite3) so the adapter's actual SQL
-// runs, without needing a workerd/Miniflare runtime.
-function createFakeD1(): D1Database {
-  const sqlite = new Database(":memory:");
-  sqlite.exec(migrationSql);
-
-  return {
-    prepare(query: string) {
-      const stmt = sqlite.prepare(query);
-      let boundArgs: unknown[] = [];
-      const statement = {
-        bind(...args: unknown[]) {
-          boundArgs = args;
-          return statement;
-        },
-        async run() {
-          stmt.run(...boundArgs);
-          return {};
-        },
-        async all<U>() {
-          return { results: stmt.all(...boundArgs) as U[] };
-        },
-      };
-      return statement;
-    },
-  } as unknown as D1Database;
-}
 
 function makeCheck(overrides: Partial<AeoCheckResult> = {}): AeoCheckResult {
   return {
@@ -123,7 +84,7 @@ describe("D1Storage", () => {
   let storage: D1Storage;
 
   beforeEach(() => {
-    storage = new D1Storage(createFakeD1());
+    storage = new D1Storage(createFakeD1(), "user-1");
   });
 
   it("round-trips a saved check through getHistory", async () => {
@@ -213,5 +174,33 @@ describe("D1Storage", () => {
       "2026-08-02T00:00:00.000Z",
       "2026-08-01T00:00:00.000Z",
     ]);
+  });
+});
+
+describe("D1Storage user isolation", () => {
+  it("two users only ever see their own checks, gap results, and competitor analyses", async () => {
+    const db = createFakeD1();
+    const userA = new D1Storage(db, "user-a");
+    const userB = new D1Storage(db, "user-b");
+
+    await userA.save(makeCheck({ query: "user a's query" }));
+    await userB.save(makeCheck({ query: "user b's query" }));
+    await userA.saveGapResult(makeGapResult());
+    await userB.saveGapResult(makeGapResult());
+    await userA.saveCompetitorAnalysis(makeCompetitorAnalysis());
+    await userB.saveCompetitorAnalysis(makeCompetitorAnalysis());
+
+    const historyA = await userA.getHistory();
+    expect(historyA).toHaveLength(1);
+    expect(historyA[0].query).toBe("user a's query");
+
+    const historyB = await userB.getHistory();
+    expect(historyB).toHaveLength(1);
+    expect(historyB[0].query).toBe("user b's query");
+
+    expect(await userA.getGapHistory()).toHaveLength(1);
+    expect(await userB.getGapHistory()).toHaveLength(1);
+    expect(await userA.getCompetitorHistory()).toHaveLength(1);
+    expect(await userB.getCompetitorHistory()).toHaveLength(1);
   });
 });
