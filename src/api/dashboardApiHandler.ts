@@ -3,7 +3,7 @@ import { D1Storage } from "../adapters/D1Storage.js";
 import { D1KeyStore } from "../adapters/D1KeyStore.js";
 import { KeyProvider } from "../ports/IKeyStore.js";
 import { buildEngineRegistry } from "../core/engineFactory.js";
-import { runSingleCheck } from "../mcp/tools.js";
+import { runChecksAcrossEngines } from "../mcp/tools.js";
 import { computeSourcesBreakdown } from "../core/sourcesBreakdown.js";
 import { computeTrend } from "../core/trends.js";
 import { EngineName } from "../core/types.js";
@@ -61,21 +61,23 @@ async function handleRunCheck(
     query?: string;
     targetDomain?: string;
     brandName?: string;
-    engine?: string;
+    engines?: string[];
     samples?: number;
   } | null;
 
   if (!body?.query || !body.targetDomain) {
     return json({ error: "query and targetDomain are required" }, 400);
   }
-  if (!body.engine || !RUNNABLE_ENGINES.includes(body.engine as EngineName)) {
+  const requested = (body.engines ?? []).filter((e): e is EngineName =>
+    RUNNABLE_ENGINES.includes(e as EngineName),
+  );
+  if (requested.length === 0) {
     return json(
-      { error: `engine must be one of: ${RUNNABLE_ENGINES.join(", ")}` },
+      { error: `engines must include at least one of: ${RUNNABLE_ENGINES.join(", ")}` },
       400,
     );
   }
 
-  const engineName = body.engine as EngineName;
   const samples = Math.min(
     MAX_SAMPLES,
     Math.max(1, Math.floor(body.samples ?? 1)),
@@ -86,32 +88,35 @@ async function handleRunCheck(
   const openAiApiKey = (await keyStore.getKey("openai")) ?? undefined;
   const registry = buildEngineRegistry({ perplexityApiKey, openAiApiKey });
 
-  let engine;
-  try {
-    [engine] = registry.resolve([engineName]);
-  } catch {
+  // Run whichever requested engines actually have a key configured; report
+  // the rest as skipped rather than failing the whole request over one
+  // missing key (each engine's key is independent).
+  const configured = requested.filter((name) => registry.has(name));
+  const skipped = requested.filter((name) => !registry.has(name));
+  if (configured.length === 0) {
     return json(
       {
-        error: `No API key set for ${engineName}. Set one in Settings first.`,
+        error: `No API key set for ${requested.join(", ")}. Set one in Settings first.`,
       },
       400,
     );
   }
+  const engines = registry.resolve(configured);
 
   const storage = new D1Storage(env.DB, userId);
   try {
-    const result = await runSingleCheck(
-      engine,
+    const results = await runChecksAcrossEngines(
+      engines,
       storage,
       {
         query: body.query,
         targetDomain: body.targetDomain,
         brandName: body.brandName,
       },
+      samples > 1 || engines.length > 1 ? 1500 : 0,
       samples,
-      samples > 1 ? 1500 : 0,
     );
-    return json({ result });
+    return json({ results, skipped });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     return json({ error: message }, 502);

@@ -21,32 +21,50 @@ const labelStyle: React.CSSProperties = {
 
 const fieldStyle: React.CSSProperties = { marginBottom: "var(--space-4)" };
 
+const ENGINE_OPTIONS: { value: RunnableEngine; label: string }[] = [
+  { value: "perplexity", label: "Perplexity" },
+  { value: "chatgpt", label: "ChatGPT (web search)" },
+];
+
 export function RunCheck() {
   const [query, setQuery] = useState("");
   const [targetDomain, setTargetDomain] = useState("");
   const [brandName, setBrandName] = useState("");
-  const [engine, setEngine] = useState<RunnableEngine>("perplexity");
+  const [engines, setEngines] = useState<RunnableEngine[]>(["perplexity"]);
   const [samples, setSamples] = useState(1);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [skipped, setSkipped] = useState<string[]>([]);
   const [results, setResults] = useState<AeoCheckResult[]>([]);
+
+  function toggleEngine(value: RunnableEngine) {
+    setEngines((prev) =>
+      prev.includes(value) ? prev.filter((e) => e !== value) : [...prev, value],
+    );
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (engines.length === 0) {
+      setError("Pick at least one engine.");
+      return;
+    }
     setError(null);
+    setSkipped([]);
     setRunning(true);
     try {
-      const { result } = await apiPost<{ result: AeoCheckResult }>(
-        "/api/run-check",
-        {
-          query,
-          targetDomain,
-          brandName: brandName || undefined,
-          engine,
-          samples,
-        },
-      );
-      setResults((prev) => [result, ...prev]);
+      const { results: newResults, skipped: newSkipped } = await apiPost<{
+        results: AeoCheckResult[];
+        skipped: string[];
+      }>("/api/run-check", {
+        query,
+        targetDomain,
+        brandName: brandName || undefined,
+        engines,
+        samples,
+      });
+      setResults((prev) => [...newResults, ...prev]);
+      setSkipped(newSkipped);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -108,18 +126,28 @@ export function RunCheck() {
         </div>
 
         <div style={fieldStyle}>
-          <label style={labelStyle} htmlFor="engine">
-            Engine
-          </label>
-          <select
-            id="engine"
-            style={inputStyle}
-            value={engine}
-            onChange={(e) => setEngine(e.target.value as RunnableEngine)}
-          >
-            <option value="perplexity">Perplexity</option>
-            <option value="chatgpt">ChatGPT (web search)</option>
-          </select>
+          <span style={labelStyle}>Engines</span>
+          <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
+            {ENGINE_OPTIONS.map((opt) => (
+              <label
+                key={opt.value}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "var(--space-2)",
+                  fontSize: "var(--text-sm)",
+                  cursor: "pointer",
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={engines.includes(opt.value)}
+                  onChange={() => toggleEngine(opt.value)}
+                />
+                {opt.label}
+              </label>
+            ))}
+          </div>
         </div>
 
         <div style={fieldStyle}>
@@ -164,6 +192,17 @@ export function RunCheck() {
             }}
           >
             {error}
+          </p>
+        )}
+        {skipped.length > 0 && (
+          <p
+            style={{
+              marginTop: "var(--space-3)",
+              color: "var(--color-warning)",
+              fontSize: "var(--text-xs)",
+            }}
+          >
+            Skipped {skipped.join(", ")} — no key set. Add one in Settings.
           </p>
         )}
       </form>

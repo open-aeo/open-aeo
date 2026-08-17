@@ -83,8 +83,13 @@ export interface RunCheckRequest {
   query: string;
   targetDomain: string;
   brandName?: string;
-  engine: RunnableEngine;
+  engines: RunnableEngine[];
   samples?: number;
+}
+
+export interface RunCheckResponse {
+  results: AeoCheckResult[];
+  skipped: string[];
 }
 
 export interface KeyStatus {
