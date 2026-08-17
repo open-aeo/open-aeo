@@ -183,6 +183,8 @@ export interface CreatePromptRequest {
 }
 
 export interface CompetitorsResponse {
+  targetDomain: string | null;
+  availableDomains: string[];
   yourCitedRate: number;
   checksAnalysed: number;
   domains: (SourceDomain & { shareOfChecks: number })[];
