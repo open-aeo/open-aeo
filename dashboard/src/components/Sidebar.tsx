@@ -1,7 +1,9 @@
-export type Section = "overview" | "run" | "settings";
+export type Section = "overview" | "prompts" | "competitors" | "run" | "settings";
 
 const NAV_ITEMS: { id: Section; label: string }[] = [
   { id: "overview", label: "Overview" },
+  { id: "prompts", label: "Prompts" },
+  { id: "competitors", label: "Competitors" },
   { id: "run", label: "Run" },
   { id: "settings", label: "Settings" },
 ];

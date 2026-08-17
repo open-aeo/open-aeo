@@ -3,8 +3,10 @@ import { apiFetch, UnauthorizedError } from "../lib/api";
 import { logout } from "../lib/auth";
 import { Sidebar, type Section } from "./Sidebar";
 import { Overview } from "./Overview";
-import { RunCheck } from "./RunCheck";
+import { RunCheck, type RunPrefill } from "./RunCheck";
 import { Settings } from "./Settings";
+import { Prompts } from "./Prompts";
+import { Competitors } from "./Competitors";
 
 interface Me {
   userId: string;
@@ -13,6 +15,8 @@ interface Me {
 
 const SECTION_TITLES: Record<Section, string> = {
   overview: "Overview",
+  prompts: "Prompts",
+  competitors: "Competitors",
   run: "Run a check",
   settings: "Settings",
 };
@@ -20,6 +24,7 @@ const SECTION_TITLES: Record<Section, string> = {
 export default function DashboardShell() {
   const [section, setSection] = useState<Section>("overview");
   const [me, setMe] = useState<Me | null>(null);
+  const [runPrefill, setRunPrefill] = useState<RunPrefill | null>(null);
 
   useEffect(() => {
     apiFetch<Me>("/api/me")
@@ -54,7 +59,16 @@ export default function DashboardShell() {
           {SECTION_TITLES[section]}
         </h1>
         {section === "overview" && <Overview />}
-        {section === "run" && <RunCheck />}
+        {section === "prompts" && (
+          <Prompts
+            onRun={(prefill) => {
+              setRunPrefill(prefill);
+              setSection("run");
+            }}
+          />
+        )}
+        {section === "competitors" && <Competitors />}
+        {section === "run" && <RunCheck prefill={runPrefill} />}
         {section === "settings" && <Settings />}
       </main>
     </div>
