@@ -2,7 +2,8 @@
 
 An open-source AEO (Answer Engine Optimization) citation monitor built as an MCP server.
 Track whether your domain is cited by AI answer engines like Perplexity, directly inside Claude.
-
+Live: [https://open-aeo-dashboard.pages.dev/](https://open-aeo-dashboard.pages.dev/)
+Docs: [https://mintlify.wiki/open-aeo/open-aeo/](https://mintlify.wiki/open-aeo/open-aeo/)
 ## What it does
 
 - **`aeo_check`** — live citation check for a single query
