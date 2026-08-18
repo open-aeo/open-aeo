@@ -108,6 +108,8 @@ src/
     IStorage.ts              interface for storage adapters
   adapters/
     PerplexityApi.ts         answer engine: Perplexity via sonar model
+    OpenAiSearch.ts          answer engine: ChatGPT via the Responses API
+    GoogleAiOverviews.ts     answer engine: Google AI Overviews via DataForSEO
     JSONStorage.ts           storage: writes to ~/.open-aeo/
     PageFetcher.ts           fetches competitor URLs, extracts page signals
   mcp/
@@ -129,6 +131,8 @@ Override the storage location with `OPEN_AEO_STORE_PATH` (must be an absolute pa
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `PERPLEXITY_API_KEY` | Yes | Your Perplexity API key. Get one at https://www.perplexity.ai/api-platform |
+| `OPENAI_API_KEY` | No | Enables the ChatGPT engine, via the OpenAI Responses API with web search |
+| `DATAFORSEO_CREDENTIALS` | No | Enables the Google AI Overviews engine. Your DataForSEO `login:password` pair |
 | `OPEN_AEO_STORE_PATH` | No | Custom absolute path for data storage. Defaults to `~/.open-aeo/` |
 
 ## FAQ
@@ -136,8 +140,8 @@ Override the storage location with `OPEN_AEO_STORE_PATH` (must be an absolute pa
 **Why should I care about AI citations?**
 AI search engines are increasingly where people get direct answers instead of a list of links. If your brand is not cited in that answer, you are invisible to that user regardless of your Google ranking. Traditional SEO tools do not track this.
 
-**Why only Perplexity? What about ChatGPT and Gemini?**
-Perplexity came first because its API returns a clean `citations` array, making detection reliable. ChatGPT Search and Gemini Grounding have different API shapes. Multi-engine support is the next planned milestone — the codebase uses a port/adapter pattern so adding a new engine means implementing one interface.
+**Which answer engines are supported?**
+Three. Perplexity came first because its API returns a clean `citations` array, making detection reliable. ChatGPT follows, through the OpenAI Responses API with web search, and registers when `OPENAI_API_KEY` is set. Google AI Overviews registers when `DATAFORSEO_CREDENTIALS` is set: Google publishes no citations API, so the overview and its sources are read from a SERP provider instead. Each engine is independent, so a check runs against whichever ones you have configured and reports the rest as skipped.
 
 **How accurate is the citation detection?**
 The detection is precise — it checks Perplexity's citations array and the answer text directly. The limitation is that AI search is non-deterministic: the same query run twice can return different results. A single check is a snapshot. Running reports over time gives a reliable signal.

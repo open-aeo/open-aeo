@@ -56,6 +56,7 @@ export interface AeoMcpServerOptions {
   // OpenAI key. On Node this defaults to process.env; on Workers, where env comes
   // from bindings rather than process.env, the caller passes it explicitly.
   openAiApiKey?: string;
+  dataForSeoCredentials?: string;
   // Per-user provider key store. Only the hosted/Workers server (authenticated
   // via GitHub OAuth, BRG-143) passes one; when present, an extra
   // aeo_set_api_key tool is registered so a user can configure their own keys.
@@ -78,6 +79,8 @@ export class AeoMcpServer {
     this.registry = buildEngineRegistry({
       perplexityApiKey: apiKey,
       openAiApiKey: options.openAiApiKey ?? process.env.OPENAI_API_KEY,
+      dataForSeoCredentials:
+        options.dataForSeoCredentials ?? process.env.DATAFORSEO_CREDENTIALS,
     });
 
     // Query generation uses Perplexity by default (its key is always present).

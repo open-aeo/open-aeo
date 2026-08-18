@@ -62,6 +62,8 @@ async function handleMcpRequest(
   const keyStore = new D1KeyStore(env.DB, props.userId, env.ENCRYPTION_SECRET);
   const perplexityApiKey = (await keyStore.getKey("perplexity")) ?? "";
   const openAiApiKey = (await keyStore.getKey("openai")) ?? undefined;
+  const dataForSeoCredentials =
+    (await keyStore.getKey("dataforseo")) ?? undefined;
 
   try {
     const transport = new WebStandardStreamableHTTPServerTransport({
@@ -71,6 +73,7 @@ async function handleMcpRequest(
     const mcp = new AeoMcpServer(perplexityApiKey, {
       storage: new D1Storage(env.DB, props.userId),
       openAiApiKey,
+      dataForSeoCredentials,
       keyStore,
     });
     await mcp.connect(transport);

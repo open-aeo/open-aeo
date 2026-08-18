@@ -67,6 +67,7 @@ export async function runCheckCommand(argv: string[]): Promise<void> {
   const registry = buildEngineRegistry({
     perplexityApiKey: perplexityKey,
     openAiApiKey: process.env.OPENAI_API_KEY,
+    dataForSeoCredentials: process.env.DATAFORSEO_CREDENTIALS,
   });
   const storage = new JsonStorage();
 
