@@ -6,3 +6,5 @@ history.json
 .DS_Store
 .dev.vars
 .claude
+.wrangler/
+.astro/

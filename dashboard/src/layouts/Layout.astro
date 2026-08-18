@@ -1,0 +1,45 @@
+---
+import "../styles/tokens.css";
+
+interface Props {
+  title?: string;
+  description?: string;
+  canonical?: string;
+  noindex?: boolean;
+}
+
+const {
+  title = "open-aeo",
+  description = "Track whether AI answer engines cite your domain.",
+  canonical,
+  noindex = false,
+} = Astro.props;
+
+const site = "https://open-aeo.dev";
+const canonicalUrl = canonical ?? new URL(Astro.url.pathname, site).href;
+---
+
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonicalUrl} />
+    {noindex && <meta name="robots" content="noindex, nofollow" />}
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="open-aeo" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonicalUrl} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <slot name="head" />
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>

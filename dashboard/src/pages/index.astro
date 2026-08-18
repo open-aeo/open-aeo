@@ -1,0 +1,1104 @@
+---
+import Layout from "../layouts/Layout.astro";
+import { LiveDemo } from "../components/LiveDemo";
+
+const title = "open-aeo: Open Source AEO Monitoring for AI Answer Engines";
+const description =
+  "Track whether ChatGPT, Perplexity and other AI answer engines cite your domain. open-aeo is an open source answer engine optimization (AEO) monitor that runs as an MCP server inside Claude.";
+
+const tools = [
+  {
+    name: "aeo_check",
+    title: "Live citation check",
+    body: "Run one query against an answer engine and see, sample by sample, whether your domain appears in the cited sources.",
+  },
+  {
+    name: "aeo_report",
+    title: "Batch reporting",
+    body: "Check a whole set of queries in one pass and get a citation rate per query, per engine.",
+  },
+  {
+    name: "aeo_history",
+    title: "Citation history",
+    body: "Every check is stored, so you can see whether your AI search visibility is trending up or down over weeks.",
+  },
+  {
+    name: "aeo_gap_report",
+    title: "Competitor gap analysis",
+    body: "Surface the queries where competitors are cited and you are not: the shortest path to more AI visibility.",
+  },
+  {
+    name: "aeo_analyse",
+    title: "Page teardown",
+    body: "Fetch the competitor page that beat you and get a structured read on why the engine picked it.",
+  },
+  {
+    name: "aeo_recommend",
+    title: "Prioritised recommendations",
+    body: "Turn a citation check into a ranked list of content changes, ordered by likely impact.",
+  },
+  {
+    name: "aeo_gap_history",
+    title: "Gap history",
+    body: "Track how the competitive picture shifts, so you can tell whether a content change actually closed a gap.",
+  },
+];
+
+const steps = [
+  {
+    n: "01",
+    title: "Install the MCP server",
+    body: "One npx command writes the config for Claude Code or Claude Desktop and stores your Perplexity API key locally.",
+  },
+  {
+    n: "02",
+    title: "Ask in plain language",
+    body: "“Check if my domain is cited for these ten queries.” Claude calls the tools, streams progress, and writes results to your own database.",
+  },
+  {
+    n: "03",
+    title: "Close the gaps",
+    body: "Read the gap report, analyse the pages that outrank you, and ship the content changes that move citation rate.",
+  },
+];
+
+const faqs = [
+  {
+    q: "What is answer engine optimization (AEO)?",
+    a: "Answer engine optimization is the practice of making your content likely to be cited in AI generated answers. Where SEO targets ranked links, AEO targets the sources an engine names when it answers a question directly.",
+  },
+  {
+    q: "Which AI answer engines does open-aeo track?",
+    a: "Perplexity and ChatGPT search are supported today. Each check runs multiple samples per query, because answer engines are non deterministic and a single response is not a measurement.",
+  },
+  {
+    q: "How much does it cost to run?",
+    a: "open-aeo is free and open source under an MIT licence. You pay only your own answer engine API usage, which is roughly cents per report rather than an enterprise subscription.",
+  },
+  {
+    q: "Where is my citation data stored?",
+    a: "Locally, in your own SQLite database, or in your own Cloudflare D1 instance when you deploy the worker. Nothing is sent to a third party service beyond the answer engine API calls themselves.",
+  },
+  {
+    q: "Do I need Claude to use it?",
+    a: "open-aeo is built as an MCP server, so Claude Code and Claude Desktop are the primary clients. Any MCP compatible client can connect to it, and the dashboard works standalone.",
+  },
+];
+
+const faqSchema = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: faqs.map((f) => ({
+    "@type": "Question",
+    name: f.q,
+    acceptedAnswer: { "@type": "Answer", text: f.a },
+  })),
+};
+
+const softwareSchema = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: "open-aeo",
+  applicationCategory: "DeveloperApplication",
+  operatingSystem: "macOS, Linux, Windows",
+  description,
+  offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+};
+---
+
+<Layout title={title} description={description}>
+  <script
+    slot="head"
+    type="application/ld+json"
+    set:html={JSON.stringify(softwareSchema)}
+  />
+  <script slot="head" type="application/ld+json" set:html={JSON.stringify(faqSchema)} />
+
+  <header class="nav">
+    <div class="shell nav-inner">
+      <a class="wordmark" href="/">open-aeo</a>
+      <nav class="nav-links" aria-label="Primary">
+        <a href="#demo">Demo</a>
+        <a href="#tools">Tools</a>
+        <a href="#how">How it works</a>
+        <a href="#faq">FAQ</a>
+        <a href="https://github.com/open-aeo/open-aeo">GitHub</a>
+      </nav>
+      <a class="btn btn-primary" href="/login" data-nav-cta>Log in</a>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="shell hero-inner">
+        <a class="eyebrow" href="https://github.com/open-aeo/open-aeo">
+          <span class="dot"></span> Open source · MIT licensed · MCP native
+        </a>
+        <h1>Know whether AI answer engines cite your domain.</h1>
+        <p class="lede">
+          open-aeo is an open source answer engine optimization monitor. It checks
+          ChatGPT and Perplexity for the questions your buyers actually ask, records
+          every citation over time, and shows you the pages winning the answers you
+          are missing.
+        </p>
+        <div class="hero-cta">
+          <a class="btn btn-primary btn-lg" href="#demo">See it run</a>
+          <a class="btn btn-ghost btn-lg" href="https://github.com/open-aeo/open-aeo">
+            View source
+          </a>
+        </div>
+        <div class="install">
+          <code>npx -y open-aeo install</code>
+          <button type="button" class="copy" data-copy="npx -y open-aeo install">
+            Copy
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <section id="demo" class="section section-demo">
+      <div class="shell">
+        <div class="section-head">
+          <span class="kicker">Live demo</span>
+          <h2>Watch a citation check run, end to end.</h2>
+          <p class="section-lede">
+            This is the real check runner with sample data. Pick a query, choose your
+            engines, and watch each answer come back cited or not.
+          </p>
+        </div>
+        <LiveDemo client:visible />
+      </div>
+    </section>
+
+    <section id="tools" class="section">
+      <div class="shell">
+        <div class="section-head">
+          <span class="kicker">The toolkit</span>
+          <h2>Seven tools for tracking AI search visibility.</h2>
+          <p class="section-lede">
+            Every capability is exposed as an MCP tool, so you call them in
+            conversation instead of clicking through a dashboard.
+          </p>
+        </div>
+        <div class="grid">
+          {
+            tools.map((t) => (
+              <article class="card">
+                <code class="tool-name">{t.name}</code>
+                <h3>{t.title}</h3>
+                <p>{t.body}</p>
+              </article>
+            ))
+          }
+        </div>
+      </div>
+    </section>
+
+    <section id="how" class="section">
+      <div class="shell">
+        <div class="section-head">
+          <span class="kicker">How it works</span>
+          <h2>From install to shipped content change.</h2>
+        </div>
+        <div class="steps">
+          {
+            steps.map((s) => (
+              <article class="step">
+                <span class="step-n">{s.n}</span>
+                <h3>{s.title}</h3>
+                <p>{s.body}</p>
+              </article>
+            ))
+          }
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="shell split">
+        <div class="split-copy">
+          <span class="kicker">Why open source</span>
+          <h2>Enterprise AEO tooling, without the enterprise contract.</h2>
+          <p class="section-lede">
+            Answer engine visibility is now a real acquisition channel, and the
+            platforms measuring it charge accordingly. open-aeo runs on your machine,
+            against your API key, with your data in your database.
+          </p>
+        </div>
+        <ul class="checks">
+          <li>Self hosted, so citation data never leaves your infrastructure</li>
+          <li>Cents per report instead of a per seat subscription</li>
+          <li>Multi sample checks, because one answer is not a measurement</li>
+          <li>Runs locally or as a Cloudflare Worker with D1 storage</li>
+          <li>Readable TypeScript you can fork and extend</li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="faq" class="section">
+      <div class="shell">
+        <div class="section-head">
+          <span class="kicker">FAQ</span>
+          <h2>Answer engine optimization, briefly explained.</h2>
+        </div>
+        <div class="faq">
+          {
+            faqs.map((f) => (
+              <details>
+                <summary>{f.q}</summary>
+                <p>{f.a}</p>
+              </details>
+            ))
+          }
+        </div>
+      </div>
+    </section>
+
+    <section class="section cta">
+      <div class="shell cta-inner">
+        <h2>Start tracking your citations today.</h2>
+        <p class="section-lede">
+          One command, your own API key, and the first report inside five minutes.
+        </p>
+        <div class="hero-cta">
+          <a class="btn btn-primary btn-lg" href="/login">Open the dashboard</a>
+          <a class="btn btn-ghost btn-lg" href="https://github.com/open-aeo/open-aeo">
+            Read the docs
+          </a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="shell footer-inner">
+      <span class="wordmark">open-aeo</span>
+      <span class="footer-note">
+        Open source AEO monitoring for AI answer engines. MIT licensed.
+      </span>
+      <a href="https://github.com/open-aeo/open-aeo">GitHub</a>
+    </div>
+  </footer>
+</Layout>
+
+<script>
+  import { isLoggedIn } from "../lib/auth";
+
+  if (isLoggedIn()) {
+    document.querySelectorAll<HTMLAnchorElement>("[data-nav-cta]").forEach((el) => {
+      el.textContent = "Dashboard";
+      el.href = "/dashboard";
+    });
+  }
+
+  document.querySelectorAll<HTMLButtonElement>("[data-copy]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      await navigator.clipboard.writeText(btn.dataset.copy ?? "");
+      const original = btn.textContent;
+      btn.textContent = "Copied";
+      setTimeout(() => {
+        btn.textContent = original;
+      }, 1400);
+    });
+  });
+</script>
+
+<style is:global>
+  html {
+    scroll-behavior: smooth;
+  }
+
+  .shell {
+    width: 100%;
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 0 var(--space-6);
+  }
+
+  /* Nav */
+  .nav {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: color-mix(in srgb, var(--color-bg) 82%, transparent);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .nav-inner {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    height: 56px;
+  }
+
+  .wordmark {
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    text-decoration: none;
+    color: var(--color-text-primary);
+  }
+
+  .nav-links {
+    display: flex;
+    gap: var(--space-6);
+    margin-right: auto;
+  }
+
+  .nav-links a {
+    font-size: var(--text-sm);
+    color: var(--color-text-secondary);
+    text-decoration: none;
+    transition: color var(--transition-fast);
+  }
+
+  .nav-links a:hover {
+    color: var(--color-text-primary);
+  }
+
+  @media (max-width: 780px) {
+    .nav-links {
+      display: none;
+    }
+    .nav-inner {
+      justify-content: space-between;
+    }
+  }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 7px 14px;
+    border-radius: var(--radius-md);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    text-decoration: none;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition:
+      background var(--transition-fast),
+      border-color var(--transition-fast);
+  }
+
+  .btn-lg {
+    padding: 10px 20px;
+  }
+
+  .btn-primary {
+    background: var(--color-accent);
+    color: #fff;
+  }
+
+  .btn-primary:hover {
+    background: var(--color-accent-hover);
+  }
+
+  .btn-ghost {
+    border-color: var(--color-border-strong);
+    color: var(--color-text-primary);
+  }
+
+  .btn-ghost:hover {
+    background: var(--color-surface-hover);
+  }
+
+  /* Hero */
+  .hero {
+    position: relative;
+    padding: calc(var(--space-12) * 2) 0 var(--space-12);
+    overflow: hidden;
+  }
+
+  .hero::before {
+    content: "";
+    position: absolute;
+    inset: -40% 20% auto 20%;
+    height: 480px;
+    background: radial-gradient(
+      ellipse at center,
+      color-mix(in srgb, var(--color-accent) 22%, transparent),
+      transparent 70%
+    );
+    filter: blur(40px);
+    pointer-events: none;
+  }
+
+  .hero-inner {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: var(--space-6);
+  }
+
+  .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: 4px 12px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-full);
+    background: var(--color-surface);
+    font-size: var(--text-xs);
+    color: var(--color-text-secondary);
+    text-decoration: none;
+  }
+
+  .eyebrow:hover {
+    border-color: var(--color-border-strong);
+    color: var(--color-text-primary);
+  }
+
+  .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: var(--radius-full);
+    background: var(--color-success);
+  }
+
+  h1 {
+    font-size: clamp(2.25rem, 5.5vw, 3.5rem);
+    line-height: 1.05;
+    letter-spacing: -0.035em;
+    font-weight: 600;
+    max-width: 16ch;
+  }
+
+  .lede {
+    max-width: 60ch;
+    font-size: var(--text-lg);
+    line-height: 1.6;
+    color: var(--color-text-secondary);
+  }
+
+  .hero-cta {
+    display: flex;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .install {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    padding: 6px 6px 6px 14px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+    color: var(--color-text-secondary);
+  }
+
+  .copy {
+    padding: 4px 10px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface-raised);
+    color: var(--color-text-secondary);
+    font-size: var(--text-xs);
+    font-family: var(--font-sans);
+    cursor: pointer;
+  }
+
+  .copy:hover {
+    color: var(--color-text-primary);
+  }
+
+  /* Sections */
+  .section {
+    padding: var(--space-12) 0;
+    border-top: 1px solid var(--color-border);
+  }
+
+  .section-demo {
+    border-top: none;
+    padding-top: var(--space-8);
+  }
+
+  .section-head {
+    max-width: 60ch;
+    margin-bottom: var(--space-8);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .kicker {
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--color-accent);
+  }
+
+  h2 {
+    font-size: clamp(1.5rem, 3vw, 2rem);
+    letter-spacing: -0.025em;
+    font-weight: 600;
+    line-height: 1.15;
+  }
+
+  .section-lede {
+    color: var(--color-text-secondary);
+    font-size: var(--text-base);
+    line-height: 1.6;
+    max-width: 62ch;
+  }
+
+  /* Tool grid */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: var(--space-4);
+  }
+
+  .card {
+    padding: var(--space-6);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background: var(--color-surface);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    transition: border-color var(--transition-fast);
+  }
+
+  .card:hover {
+    border-color: var(--color-border-strong);
+  }
+
+  .tool-name {
+    align-self: flex-start;
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    color: var(--color-accent);
+    background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+    padding: 2px 8px;
+    border-radius: var(--radius-sm);
+  }
+
+  .card h3,
+  .step h3 {
+    font-size: var(--text-base);
+    font-weight: 550;
+    letter-spacing: -0.01em;
+  }
+
+  .card p,
+  .step p {
+    font-size: var(--text-sm);
+    color: var(--color-text-secondary);
+    line-height: 1.6;
+  }
+
+  /* Steps */
+  .steps {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: var(--space-8);
+  }
+
+  .step {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--color-border-strong);
+  }
+
+  .step-n {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    color: var(--color-text-tertiary);
+  }
+
+  /* Split */
+  .split {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-12);
+    align-items: start;
+  }
+
+  @media (max-width: 780px) {
+    .split {
+      grid-template-columns: 1fr;
+      gap: var(--space-8);
+    }
+  }
+
+  .split-copy {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .checks {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .checks li {
+    position: relative;
+    padding-left: var(--space-6);
+    font-size: var(--text-sm);
+    color: var(--color-text-secondary);
+    line-height: 1.6;
+  }
+
+  .checks li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 7px;
+    width: 6px;
+    height: 6px;
+    border-radius: var(--radius-full);
+    background: var(--color-accent);
+  }
+
+  /* FAQ */
+  .faq {
+    border-top: 1px solid var(--color-border);
+  }
+
+  .faq details {
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .faq summary {
+    padding: var(--space-4) 0;
+    cursor: pointer;
+    font-size: var(--text-base);
+    font-weight: 500;
+    list-style: none;
+  }
+
+  .faq summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .faq summary::after {
+    content: "+";
+    float: right;
+    color: var(--color-text-tertiary);
+  }
+
+  .faq details[open] summary::after {
+    content: "−";
+  }
+
+  .faq p {
+    padding-bottom: var(--space-4);
+    font-size: var(--text-sm);
+    color: var(--color-text-secondary);
+    line-height: 1.65;
+    max-width: 72ch;
+  }
+
+  /* CTA + footer */
+  .cta-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: var(--space-4);
+  }
+
+  .footer {
+    border-top: 1px solid var(--color-border);
+    padding: var(--space-8) 0;
+  }
+
+  .footer-inner {
+    display: flex;
+    align-items: center;
+    gap: var(--space-6);
+    flex-wrap: wrap;
+  }
+
+  .footer-note {
+    margin-right: auto;
+    font-size: var(--text-sm);
+    color: var(--color-text-tertiary);
+  }
+
+  .footer a {
+    font-size: var(--text-sm);
+    color: var(--color-text-secondary);
+    text-decoration: none;
+  }
+
+  .footer a:hover {
+    color: var(--color-text-primary);
+  }
+
+  /* Live demo */
+  .demo {
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background: var(--color-surface);
+    overflow: hidden;
+    box-shadow: 0 24px 60px -30px rgba(0, 0, 0, 0.8);
+  }
+
+  .demo-chrome {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    padding: var(--space-3) var(--space-4);
+    border-bottom: 1px solid var(--color-border);
+    background: var(--color-surface-raised);
+  }
+
+  .demo-dots {
+    display: flex;
+    gap: 6px;
+  }
+
+  .demo-dots span {
+    width: 9px;
+    height: 9px;
+    border-radius: var(--radius-full);
+    background: var(--color-border-strong);
+  }
+
+  .demo-title {
+    font-size: var(--text-xs);
+    color: var(--color-text-secondary);
+    font-family: var(--font-mono);
+  }
+
+  .demo-badge {
+    margin-left: auto;
+    font-size: var(--text-xs);
+    color: var(--color-text-tertiary);
+  }
+
+  .demo-body {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    min-height: 460px;
+  }
+
+  @media (max-width: 780px) {
+    .demo-body {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .demo-panel {
+    padding: var(--space-6);
+    border-right: 1px solid var(--color-border);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
+  @media (max-width: 780px) {
+    .demo-panel {
+      border-right: none;
+      border-bottom: 1px solid var(--color-border);
+    }
+  }
+
+  .demo-field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .demo-label {
+    font-size: var(--text-xs);
+    color: var(--color-text-secondary);
+  }
+
+  .demo-select-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .demo-option {
+    text-align: left;
+    padding: 8px 10px;
+    font-size: var(--text-xs);
+    font-family: var(--font-sans);
+    color: var(--color-text-secondary);
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    line-height: 1.4;
+    transition:
+      border-color var(--transition-fast),
+      color var(--transition-fast);
+  }
+
+  .demo-option.is-active {
+    border-color: var(--color-accent);
+    color: var(--color-text-primary);
+  }
+
+  .demo-option:disabled {
+    cursor: default;
+  }
+
+  .demo-input {
+    padding: 8px 10px;
+    font-size: var(--text-sm);
+    font-family: var(--font-mono);
+    color: var(--color-text-primary);
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+  }
+
+  .demo-engines {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .demo-engine {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: 7px 10px;
+    font-size: var(--text-xs);
+    font-family: var(--font-sans);
+    color: var(--color-text-secondary);
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+  }
+
+  .demo-engine.is-on {
+    color: var(--color-text-primary);
+    border-color: var(--color-border-strong);
+  }
+
+  .demo-check {
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+    border: 1px solid var(--color-border-strong);
+  }
+
+  .demo-engine.is-on .demo-check {
+    background: var(--color-accent);
+    border-color: var(--color-accent);
+  }
+
+  .demo-engine-sub {
+    margin-left: auto;
+    font-family: var(--font-mono);
+    color: var(--color-text-tertiary);
+  }
+
+  .demo-run {
+    margin-top: auto;
+    padding: 9px 14px;
+    border: none;
+    border-radius: var(--radius-md);
+    background: var(--color-accent);
+    color: #fff;
+    font-size: var(--text-sm);
+    font-family: var(--font-sans);
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  .demo-run:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+
+  .demo-score {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-bg);
+  }
+
+  .demo-score-value {
+    font-size: var(--text-2xl);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+
+  .demo-score-label {
+    font-size: var(--text-xs);
+    color: var(--color-text-secondary);
+  }
+
+  .demo-output {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .demo-log {
+    flex: 1;
+    max-height: 260px;
+    overflow-y: auto;
+    padding: var(--space-4);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    line-height: 1.75;
+    background: var(--color-bg);
+  }
+
+  .demo-log-empty {
+    color: var(--color-text-tertiary);
+  }
+
+  .demo-log-line {
+    white-space: pre-wrap;
+    color: var(--color-text-primary);
+  }
+
+  .demo-log-line.is-muted {
+    color: var(--color-text-tertiary);
+  }
+
+  .demo-log-line.is-ok {
+    color: var(--color-success);
+  }
+
+  .demo-log-line.is-miss {
+    color: var(--color-text-secondary);
+  }
+
+  .demo-results {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: var(--space-4);
+    padding: var(--space-4);
+    border-top: 1px solid var(--color-border);
+  }
+
+  .demo-result {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    min-width: 0;
+  }
+
+  .demo-result-head {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .demo-result-engine {
+    font-size: var(--text-sm);
+    font-weight: 500;
+  }
+
+  .demo-pill {
+    padding: 1px 8px;
+    border-radius: var(--radius-full);
+    font-size: var(--text-xs);
+    border: 1px solid var(--color-border);
+    color: var(--color-text-secondary);
+  }
+
+  .demo-pill.is-ok {
+    color: var(--color-success);
+    border-color: color-mix(in srgb, var(--color-success) 40%, transparent);
+  }
+
+  .demo-sources {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .demo-sources li {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-2);
+    font-size: var(--text-xs);
+    color: var(--color-text-tertiary);
+    min-width: 0;
+  }
+
+  .demo-source-domain {
+    font-family: var(--font-mono);
+    color: var(--color-text-secondary);
+    flex: none;
+  }
+
+  .demo-sources li.is-you .demo-source-domain {
+    color: var(--color-accent);
+  }
+
+  .demo-source-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .demo-you {
+    margin-left: auto;
+    flex: none;
+    padding: 0 6px;
+    border-radius: var(--radius-sm);
+    background: color-mix(in srgb, var(--color-accent) 18%, transparent);
+    color: var(--color-accent);
+  }
+
+  .demo-gap {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    padding: var(--space-4);
+    border-top: 1px solid var(--color-border);
+    background: var(--color-surface-raised);
+  }
+
+  .demo-gap-title {
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--color-text-tertiary);
+  }
+
+  .demo-gap-row {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-3);
+    font-size: var(--text-xs);
+    color: var(--color-text-tertiary);
+    min-width: 0;
+  }
+
+  .demo-gap-domain {
+    font-family: var(--font-mono);
+    color: var(--color-text-primary);
+    flex: none;
+  }
+
+  .demo-gap-cited {
+    color: var(--color-warning);
+    flex: none;
+  }
+
+  .demo-gap-note {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+</style>

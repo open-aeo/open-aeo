@@ -1,0 +1,83 @@
+---
+import Layout from "../layouts/Layout.astro";
+---
+
+<Layout
+  title="Log in · open-aeo"
+  description="Log in to the open-aeo dashboard to track AI answer engine citations."
+  noindex
+>
+  <div class="page">
+    <div class="card">
+      <a class="wordmark" href="/">open-aeo</a>
+      <p class="subhead">Track whether AI answer engines cite your domain.</p>
+      <button id="login-btn" class="btn-primary">Log in with GitHub</button>
+    </div>
+  </div>
+</Layout>
+
+<script>
+  import { isLoggedIn, startLogin } from "../lib/auth";
+
+  if (isLoggedIn()) {
+    window.location.href = "/dashboard";
+  }
+
+  document.getElementById("login-btn")?.addEventListener("click", () => {
+    startLogin().catch((err) => {
+      console.error(err);
+      alert("Could not start login. Try again.");
+    });
+  });
+</script>
+
+<style>
+  .page {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--color-bg);
+  }
+
+  .card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-4);
+    padding: var(--space-12) var(--space-8);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background: var(--color-surface);
+    text-align: center;
+  }
+
+  .wordmark {
+    font-weight: 700;
+    font-size: var(--text-xl);
+    letter-spacing: -0.02em;
+    text-decoration: none;
+  }
+
+  .subhead {
+    color: var(--color-text-secondary);
+    font-size: var(--text-sm);
+    max-width: 320px;
+  }
+
+  .btn-primary {
+    background: var(--color-accent);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius-md);
+    padding: 8px 20px;
+    font-size: var(--text-sm);
+    font-family: var(--font-sans);
+    cursor: pointer;
+    margin-top: var(--space-2);
+  }
+
+  .btn-primary:hover {
+    background: var(--color-accent-hover);
+  }
+</style>

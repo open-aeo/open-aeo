@@ -1,0 +1,39 @@
+---
+import Layout from "../layouts/Layout.astro";
+---
+
+<Layout title="Logging in — open-aeo">
+  <div class="page">
+    <p id="status" class="status">Signing you in…</p>
+  </div>
+</Layout>
+
+<script>
+  import { completeLogin } from "../lib/auth";
+
+  const statusEl = document.getElementById("status")!;
+
+  completeLogin(new URL(window.location.href))
+    .then(() => {
+      window.location.href = "/dashboard";
+    })
+    .catch((err) => {
+      console.error(err);
+      statusEl.textContent = "Login failed. Go back and try again.";
+    });
+</script>
+
+<style>
+  .page {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--color-bg);
+  }
+
+  .status {
+    color: var(--color-text-secondary);
+    font-size: var(--text-sm);
+  }
+</style>

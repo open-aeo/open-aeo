@@ -3,6 +3,7 @@ import { aggregateCheckResults, medianPosition } from "../core/sampling.js";
 import {
   AeoCheckResult,
   DEFAULT_ENGINE,
+  EngineName,
   GapTarget,
   RecommendationReport,
   TargetConfig,
@@ -107,6 +108,27 @@ export async function handleAeoHistory(
   };
 }
 
+// Progress events emitted during a check, for callers that want to stream
+// intermediate state (e.g. the dashboard's live-running view) instead of
+// waiting for the final aggregated result. Optional and additive — the MCP
+// tool handlers below don't pass one, so their behavior is unchanged.
+export type CheckProgressEvent =
+  | { type: "engine-start"; engine: EngineName; query: string }
+  | {
+      type: "sample";
+      engine: EngineName;
+      sampleIndex: number;
+      totalSamples: number;
+      cited: boolean;
+      // Not persisted to AeoCheckResult/storage — ephemeral, for a caller
+      // streaming live progress to show what the engine actually said.
+      answerPreview: string;
+      citationCount: number;
+    }
+  | { type: "result"; engine: EngineName; result: AeoCheckResult };
+
+export type OnCheckProgress = (event: CheckProgressEvent) => void;
+
 // Check one query against one engine `samples` times and save a single
 // aggregated result carrying the citation rate. LLM answers vary run to run, so
 // one sample is one roll of the dice; N samples make the number defensible. The
@@ -117,18 +139,28 @@ export async function runSingleCheck(
   config: TargetConfig,
   samples = 1,
   delayMs = 0,
+  onProgress?: OnCheckProgress,
 ): Promise<AeoCheckResult> {
   const runs = Math.max(1, Math.floor(samples));
   const sampleResults: AeoCheckResult[] = [];
   for (let i = 0; i < runs; i++) {
     const response = await engine.search(config.query);
-    sampleResults.push(
-      parseAeoResponse(config, response, engine.name, engine.model),
-    );
+    const parsed = parseAeoResponse(config, response, engine.name, engine.model);
+    sampleResults.push(parsed);
+    onProgress?.({
+      type: "sample",
+      engine: engine.name,
+      sampleIndex: i + 1,
+      totalSamples: runs,
+      cited: parsed.cited,
+      answerPreview: response.answerText.slice(0, 500),
+      citationCount: response.citations.length,
+    });
     if (delayMs > 0 && i < runs - 1) await sleep(delayMs);
   }
   const aggregated = aggregateCheckResults(sampleResults);
   await storage.save(aggregated);
+  onProgress?.({ type: "result", engine: engine.name, result: aggregated });
   return aggregated;
 }
 
@@ -141,15 +173,18 @@ export async function runChecksAcrossEngines(
   config: TargetConfig,
   delayMs = 0,
   samples = 1,
+  onProgress?: OnCheckProgress,
 ): Promise<AeoCheckResult[]> {
   const results: AeoCheckResult[] = [];
   for (const engine of engines) {
+    onProgress?.({ type: "engine-start", engine: engine.name, query: config.query });
     const result = await runSingleCheck(
       engine,
       storage,
       config,
       samples,
       delayMs,
+      onProgress,
     );
     results.push(result);
     if (delayMs > 0 && engine !== engines.at(-1)) await sleep(delayMs);
