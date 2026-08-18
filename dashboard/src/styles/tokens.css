@@ -1,19 +1,24 @@
-/* Design tokens for the open-aeo dashboard — dark-first, minimal, decluttered. */
+/*
+ * Design tokens for the open-aeo marketing pages. Light is the default and
+ * mirrors the dashboard's palette in src/styles/globals.css, so the site and
+ * the app read as one product.
+ * The dark set is kept behind [data-theme="dark"] for anything that opts in.
+ */
 :root {
-  --color-bg: #0d0d10;
-  --color-surface: #16161a;
-  --color-surface-raised: #1e1e24;
-  --color-surface-hover: rgba(255, 255, 255, 0.03);
-  --color-border: #2a2a32;
-  --color-border-strong: #3a3a46;
-  --color-text-primary: #e8e8f0;
-  --color-text-secondary: #9090a8;
-  --color-text-tertiary: #5a5a70;
-  --color-accent: #5e6ad2;
-  --color-accent-hover: #4f58c4;
-  --color-success: #30d158;
-  --color-warning: #ffd60a;
-  --color-danger: #ff453a;
+  --color-bg: oklch(0.985 0.002 275);
+  --color-surface: oklch(1 0 0);
+  --color-surface-raised: oklch(0.97 0.003 275);
+  --color-surface-hover: rgba(0, 0, 0, 0.03);
+  --color-border: oklch(0.925 0.005 275);
+  --color-border-strong: oklch(0.87 0.007 275);
+  --color-text-primary: oklch(0.19 0.012 275);
+  --color-text-secondary: oklch(0.53 0.014 275);
+  --color-text-tertiary: oklch(0.65 0.012 275);
+  --color-accent: oklch(0.53 0.16 274);
+  --color-accent-hover: oklch(0.47 0.16 274);
+  --color-success: oklch(0.62 0.15 152);
+  --color-warning: oklch(0.7 0.15 78);
+  --color-danger: oklch(0.58 0.21 27);
 
   --font-sans:
     "Geist", "Inter", system-ui, -apple-system, sans-serif;
@@ -43,17 +48,23 @@
   --transition-fast: 150ms ease-out;
 }
 
-[data-theme="light"] {
-  --color-bg: #f4f4f6;
-  --color-surface: #ffffff;
-  --color-surface-raised: #f0f0f4;
-  --color-surface-hover: rgba(0, 0, 0, 0.03);
-  --color-border: #d8d8e0;
-  --color-border-strong: #c0c0cc;
-  --color-text-primary: #111118;
-  --color-text-secondary: #555568;
-  --color-text-tertiary: #888898;
+[data-theme="dark"] {
+  --color-bg: #0d0d10;
+  --color-surface: #16161a;
+  --color-surface-raised: #1e1e24;
+  --color-surface-hover: rgba(255, 255, 255, 0.03);
+  --color-border: #2a2a32;
+  --color-border-strong: #3a3a46;
+  --color-text-primary: #e8e8f0;
+  --color-text-secondary: #9090a8;
+  --color-text-tertiary: #5a5a70;
+  --color-accent: #5e6ad2;
+  --color-accent-hover: #4f58c4;
+  --color-success: #30d158;
+  --color-warning: #ffd60a;
+  --color-danger: #ff453a;
 }
+
 
 *,
 *::before,
