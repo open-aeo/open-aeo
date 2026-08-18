@@ -4,3 +4,5 @@ build/
 .env.*
 history.json
 .DS_Store
+.dev.vars
+.claude
