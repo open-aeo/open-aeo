@@ -6,3 +6,5 @@ history.json
 .DS_Store
 .wrangler/
 .astro/
+.dev.vars
+dashboard/.env
