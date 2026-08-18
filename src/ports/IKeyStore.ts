@@ -1,4 +1,4 @@
-export type KeyProvider = "perplexity" | "openai";
+export type KeyProvider = "perplexity" | "openai" | "dataforseo";
 
 export interface IKeyStore {
   setKey(provider: KeyProvider, apiKey: string): Promise<void>;

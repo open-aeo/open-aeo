@@ -34,7 +34,7 @@ export const ENGINES: Record<string, EngineMeta> = {
   },
   "google-ai-overviews": {
     key: "google-ai-overviews",
-    label: "Google AI Overviews",
+    label: "AI Overviews",
     Icon: GeminiIcon,
     color: "var(--chart-4)",
   },
@@ -62,4 +62,8 @@ export function engineLabel(engine: string): string {
 }
 
 /** The engines a check can actually be run against from the dashboard. */
-export const RUNNABLE_ENGINES = ["perplexity", "chatgpt"] as const;
+export const RUNNABLE_ENGINES = [
+  "perplexity",
+  "chatgpt",
+  "google-ai-overviews",
+] as const;

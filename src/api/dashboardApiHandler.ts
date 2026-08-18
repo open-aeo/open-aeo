@@ -29,9 +29,13 @@ interface AuthProps {
   login: string;
 }
 
-// Engines that actually run today (google-ai-overviews is a registered
-// extension point only — see src/adapters/GoogleAiOverviews.ts).
-const RUNNABLE_ENGINES: EngineName[] = ["perplexity", "chatgpt"];
+// Engines a check can be run against. Each still needs its provider key set
+// before it will actually run; see handleRunCheck's `skipped` list.
+const RUNNABLE_ENGINES: EngineName[] = [
+  "perplexity",
+  "chatgpt",
+  "google-ai-overviews",
+];
 const MAX_SAMPLES = 10;
 
 function json(body: unknown, status = 200): Response {
@@ -128,7 +132,13 @@ async function handleRunCheck(
   const keyStore = new D1KeyStore(env.DB, userId, env.ENCRYPTION_SECRET);
   const perplexityApiKey = (await keyStore.getKey("perplexity")) ?? "";
   const openAiApiKey = (await keyStore.getKey("openai")) ?? undefined;
-  const registry = buildEngineRegistry({ perplexityApiKey, openAiApiKey });
+  const dataForSeoCredentials =
+    (await keyStore.getKey("dataforseo")) ?? undefined;
+  const registry = buildEngineRegistry({
+    perplexityApiKey,
+    openAiApiKey,
+    dataForSeoCredentials,
+  });
 
   // Run whichever requested engines actually have a key configured; report
   // the rest as skipped rather than failing the whole request over one
@@ -164,11 +174,16 @@ async function handleRunCheck(
 
 async function handleGetKeys(env: Env, userId: string): Promise<Response> {
   const keyStore = new D1KeyStore(env.DB, userId, env.ENCRYPTION_SECRET);
-  const [perplexity, openai] = await Promise.all([
+  const [perplexity, openai, dataforseo] = await Promise.all([
     keyStore.getKey("perplexity"),
     keyStore.getKey("openai"),
+    keyStore.getKey("dataforseo"),
   ]);
-  return json({ perplexity: perplexity !== null, openai: openai !== null });
+  return json({
+    perplexity: perplexity !== null,
+    openai: openai !== null,
+    dataforseo: dataforseo !== null,
+  });
 }
 
 async function handleSetKey(
@@ -181,13 +196,28 @@ async function handleSetKey(
     apiKey?: string;
   } | null;
 
+  const providers: KeyProvider[] = ["perplexity", "openai", "dataforseo"];
   if (
     !body?.provider ||
-    (body.provider !== "perplexity" && body.provider !== "openai") ||
+    !providers.includes(body.provider as KeyProvider) ||
     !body.apiKey
   ) {
     return json(
-      { error: "provider ('perplexity' | 'openai') and apiKey are required" },
+      {
+        error: `provider (${providers
+          .map((p) => `'${p}'`)
+          .join(" | ")}) and apiKey are required`,
+      },
+      400,
+    );
+  }
+
+  // DataForSEO authenticates with a login:password pair rather than a single
+  // token. Reject a malformed pair here so a stored key is always usable;
+  // otherwise the failure surfaces much later, as a broken check run.
+  if (body.provider === "dataforseo" && !body.apiKey.includes(":")) {
+    return json(
+      { error: "DataForSEO credentials must be in 'login:password' form" },
       400,
     );
   }

@@ -134,7 +134,10 @@ export interface TrendPoint {
   citationRate: number;
 }
 
-export type RunnableEngine = "perplexity" | "chatgpt";
+export type RunnableEngine =
+  | "perplexity"
+  | "chatgpt"
+  | "google-ai-overviews";
 
 export interface RunCheckRequest {
   query: string;
@@ -162,6 +165,7 @@ export type RunCheckStreamEvent =
 export interface KeyStatus {
   perplexity: boolean;
   openai: boolean;
+  dataforseo: boolean;
 }
 
 export interface TrackedPrompt {

@@ -29,6 +29,13 @@ const PROVIDERS: {
     label: "OpenAI",
     description: "Powers ChatGPT web-search checks.",
   },
+  {
+    provider: "dataforseo",
+    engine: "google-ai-overviews",
+    label: "DataForSEO",
+    description:
+      "Sources Google AI Overviews, which has no citations API of its own. Paste as login:password.",
+  },
 ];
 
 function KeyRow({
@@ -89,7 +96,13 @@ function KeyRow({
           type="password"
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          placeholder={isSet ? "Replace key…" : "Paste API key…"}
+          placeholder={
+            isSet
+              ? "Replace key…"
+              : provider === "dataforseo"
+                ? "login:password"
+                : "Paste API key…"
+          }
           autoComplete="off"
         />
         <Button size="sm" className="h-9" onClick={save} disabled={saving || !value}>
