@@ -20,6 +20,11 @@ import {
   SourcesBreakdown,
   SourcesFilter,
 } from "../core/sourcesBreakdown.js";
+import {
+  computeProgress,
+  formatProgressReport,
+  ProgressFilter,
+} from "../core/progress.js";
 import { IQueryGenerator } from "../core/promptGenerator.js";
 
 export async function handleAeoGapReport(
@@ -105,6 +110,19 @@ export async function handleAeoHistory(
   return {
     content: [{ type: "text", text: [header, ...lines].join("\n") }],
   };
+}
+
+// Closed-loop verification: diff the earliest stored check against the latest
+// per query+engine and report the state transition — gaps closed, regressions,
+// and movement. Reads existing history only, so it proves whether acting on a
+// recommendation actually changed the outcome.
+export async function handleAeoProgress(
+  storage: IStorage,
+  filter: ProgressFilter = {},
+): Promise<{ content: Array<{ type: "text"; text: string }> }> {
+  const history = await storage.getHistory(filter.query);
+  const report = computeProgress(history, filter);
+  return { content: [{ type: "text", text: formatProgressReport(report) }] };
 }
 
 // Check one query against one engine `samples` times and save a single

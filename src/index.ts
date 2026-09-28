@@ -131,20 +131,21 @@ async function main() {
     return;
   }
 
-  const apiKey = process.env.PERPLEXITY_API_KEY;
+  const perplexityApiKey = process.env.PERPLEXITY_API_KEY;
+  const openAiApiKey = process.env.OPENAI_API_KEY;
 
-  if (!apiKey) {
+  if (!perplexityApiKey && !openAiApiKey) {
     console.error(
-      "FATAL ERROR: PERPLEXITY_API_KEY environment variable is missing.",
+      "FATAL ERROR: no answer engine is configured. Set PERPLEXITY_API_KEY or OPENAI_API_KEY (or both).",
     );
     console.error(
-      "Please set it in your environment or Claude Desktop config.",
+      "Please set one in your environment or Claude Desktop config.",
     );
     process.exit(1);
   }
 
   try {
-    const server = new AeoMcpServer(apiKey);
+    const server = new AeoMcpServer({ perplexityApiKey, openAiApiKey });
     await server.run();
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

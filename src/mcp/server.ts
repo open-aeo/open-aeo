@@ -13,14 +13,18 @@ import {
   handleAeoRecommend,
   handleAeoSources,
   handleAeoGenerateQueries,
+  handleAeoProgress,
 } from "./tools.js";
 import { EngineName, GapTarget } from "../core/types.js";
 import { EngineRegistry } from "../core/engineRegistry.js";
-import { buildEngineRegistry } from "../core/engineFactory.js";
+import {
+  buildEngineRegistry,
+  buildQueryGenerator,
+} from "../core/engineFactory.js";
 import { IStorage } from "../ports/IStorage.js";
 import { JsonStorage } from "../adapters/JSONStorage.js";
 import { PageFetcher } from "../adapters/PageFetcher.js";
-import { LlmQueryGenerator } from "../adapters/LlmQueryGenerator.js";
+import { IQueryGenerator } from "../core/promptGenerator.js";
 import { z } from "zod";
 
 // Engine names a caller may request. Whether an engine actually runs depends on
@@ -49,12 +53,14 @@ function resolveDefaultSamples(): number {
 }
 
 export interface AeoMcpServerOptions {
+  // Answer-engine keys. The caller passes whichever it has; the server runs on
+  // either one alone or both. Callers resolve these from env (Node) or bindings
+  // (Workers) so the server never touches process.env — keeping it Workers-safe.
+  perplexityApiKey?: string;
+  openAiApiKey?: string;
   // Storage backend. Defaults to local JSON; hosted/Workers pass MemoryStorage
   // (or a durable adapter later) since there is no filesystem.
   storage?: IStorage;
-  // OpenAI key. On Node this defaults to process.env; on Workers, where env comes
-  // from bindings rather than process.env, the caller passes it explicitly.
-  openAiApiKey?: string;
 }
 
 export class AeoMcpServer {
@@ -62,19 +68,20 @@ export class AeoMcpServer {
   private registry: EngineRegistry;
   private storage: IStorage;
   private fetcher: PageFetcher;
-  private queryGenerator: LlmQueryGenerator;
+  private queryGenerator: IQueryGenerator;
 
-  constructor(apiKey: string, options: AeoMcpServerOptions = {}) {
-    // Perplexity is always available (its key is required to start the server).
-    // Additional engines register only when their key is present, so the tool
-    // set adapts to whatever the operator has configured. Shared with the CLI.
-    this.registry = buildEngineRegistry({
-      perplexityApiKey: apiKey,
-      openAiApiKey: options.openAiApiKey ?? process.env.OPENAI_API_KEY,
-    });
+  constructor(options: AeoMcpServerOptions = {}) {
+    // Engines register only for the keys that are present, so the tool set adapts
+    // to whatever is configured. buildEngineRegistry throws if neither is set, so
+    // an engine-less server can never start. Shared with the CLI.
+    const credentials = {
+      perplexityApiKey: options.perplexityApiKey,
+      openAiApiKey: options.openAiApiKey,
+    };
+    this.registry = buildEngineRegistry(credentials);
 
-    // Query generation uses Perplexity by default (its key is always present).
-    this.queryGenerator = new LlmQueryGenerator(apiKey);
+    // Query generation uses whichever provider is configured (Perplexity first).
+    this.queryGenerator = buildQueryGenerator(credentials);
 
     this.storage = options.storage ?? new JsonStorage();
     this.fetcher = new PageFetcher();
@@ -200,6 +207,45 @@ export class AeoMcpServer {
       async ({ query, domain }) => {
         try {
           return await handleAeoHistory(this.storage, query, domain);
+        } catch (error) {
+          const message =
+            error instanceof Error ? error.message : String(error);
+          return {
+            content: [{ type: "text" as const, text: `Error: ${message}` }],
+            isError: true,
+          };
+        }
+      },
+    );
+
+    this.server.registerTool(
+      "aeo_progress",
+      {
+        description:
+          "Prove whether AEO work paid off. Diffs the earliest stored check against the latest for each query and engine, and reports the outcome — gaps closed (was absent, now cited), regressions, position/citation-rate movement. Read-only over local history; run aeo_check or aeo_report over time first to build the before/after.",
+        inputSchema: {
+          targetDomain: z
+            .string()
+            .optional()
+            .describe("Filter to a single domain (e.g. 'notion.so')"),
+          query: z
+            .string()
+            .optional()
+            .describe("Filter to a single query"),
+          engine: engineNameSchema
+            .optional()
+            .describe(
+              "Filter to one engine. Omit to report each engine's trajectory separately.",
+            ),
+        },
+      },
+      async ({ targetDomain, query, engine }) => {
+        try {
+          return await handleAeoProgress(this.storage, {
+            targetDomain,
+            query,
+            engine,
+          });
         } catch (error) {
           const message =
             error instanceof Error ? error.message : String(error);

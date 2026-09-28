@@ -18,7 +18,8 @@ async function startTestServer(token?: string): Promise<{
     token,
     // A dummy key is fine: constructing does no network I/O, and initialize /
     // tools/list never call an engine.
-    createServerInstance: () => new AeoMcpServer("test-key"),
+    createServerInstance: () =>
+      new AeoMcpServer({ perplexityApiKey: "test-key" }),
   });
   await once(server, "listening");
   const port = (server.address() as AddressInfo).port;

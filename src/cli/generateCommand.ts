@@ -1,4 +1,4 @@
-import { LlmQueryGenerator } from "../adapters/LlmQueryGenerator.js";
+import { buildQueryGenerator } from "../core/engineFactory.js";
 
 interface GenerateArgs {
   input?: string;
@@ -38,15 +38,18 @@ export async function runGenerateCommand(argv: string[]): Promise<void> {
     process.exit(1);
   }
 
-  const perplexityKey = process.env.PERPLEXITY_API_KEY;
-  if (!perplexityKey) {
-    console.error(
-      "FATAL ERROR: PERPLEXITY_API_KEY environment variable is missing.",
-    );
+  let generator;
+  try {
+    generator = buildQueryGenerator({
+      perplexityApiKey: process.env.PERPLEXITY_API_KEY,
+      openAiApiKey: process.env.OPENAI_API_KEY,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`FATAL ERROR: ${message}`);
     process.exit(1);
   }
 
-  const generator = new LlmQueryGenerator(perplexityKey);
   const queries = await generator.generate(args.input, args.count);
 
   if (args.json) {

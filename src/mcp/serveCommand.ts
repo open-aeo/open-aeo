@@ -15,10 +15,11 @@ export function runServeCommand(argv: string[]): void {
     process.exit(1);
   }
 
-  const apiKey = process.env.PERPLEXITY_API_KEY;
-  if (!apiKey) {
+  const perplexityApiKey = process.env.PERPLEXITY_API_KEY;
+  const openAiApiKey = process.env.OPENAI_API_KEY;
+  if (!perplexityApiKey && !openAiApiKey) {
     console.error(
-      "FATAL ERROR: PERPLEXITY_API_KEY environment variable is missing.",
+      "FATAL ERROR: no answer engine is configured. Set PERPLEXITY_API_KEY or OPENAI_API_KEY (or both).",
     );
     process.exit(1);
   }
@@ -33,6 +34,7 @@ export function runServeCommand(argv: string[]): void {
   startHttpServer({
     port,
     token,
-    createServerInstance: () => new AeoMcpServer(apiKey),
+    createServerInstance: () =>
+      new AeoMcpServer({ perplexityApiKey, openAiApiKey }),
   });
 }

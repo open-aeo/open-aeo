@@ -10,7 +10,7 @@ import { MemoryStorage } from "./adapters/MemoryStorage.js";
 // Storage is in-memory and per-request (no filesystem on Workers), so history
 // does not persist yet — a durable D1/KV backend is tracked in BRG-142.
 export interface Env {
-  PERPLEXITY_API_KEY: string;
+  PERPLEXITY_API_KEY?: string;
   OPENAI_API_KEY?: string;
   OPEN_AEO_HTTP_TOKEN?: string;
 }
@@ -34,8 +34,14 @@ export default {
       return json({ error: "Not found" }, 404);
     }
 
-    if (!env.PERPLEXITY_API_KEY) {
-      return json({ error: "Server is missing PERPLEXITY_API_KEY" }, 500);
+    if (!env.PERPLEXITY_API_KEY && !env.OPENAI_API_KEY) {
+      return json(
+        {
+          error:
+            "Server has no answer engine configured. Set PERPLEXITY_API_KEY or OPENAI_API_KEY (or both).",
+        },
+        500,
+      );
     }
 
     // The endpoint holds provider keys and runs paid calls, so require the token.
@@ -56,9 +62,10 @@ export default {
         sessionIdGenerator: undefined,
         enableJsonResponse: true,
       });
-      const mcp = new AeoMcpServer(env.PERPLEXITY_API_KEY, {
-        storage: new MemoryStorage(),
+      const mcp = new AeoMcpServer({
+        perplexityApiKey: env.PERPLEXITY_API_KEY,
         openAiApiKey: env.OPENAI_API_KEY,
+        storage: new MemoryStorage(),
       });
       await mcp.connect(transport);
       return await transport.handleRequest(request);

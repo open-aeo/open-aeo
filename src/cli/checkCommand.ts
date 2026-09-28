@@ -47,14 +47,6 @@ function parseArgs(argv: string[]): CheckArgs {
 export async function runCheckCommand(argv: string[]): Promise<void> {
   const args = parseArgs(argv);
 
-  const perplexityKey = process.env.PERPLEXITY_API_KEY;
-  if (!perplexityKey) {
-    console.error(
-      "FATAL ERROR: PERPLEXITY_API_KEY environment variable is missing.",
-    );
-    process.exit(1);
-  }
-
   const config = loadConfig(args.config);
   if (args.samples !== undefined) {
     if (!Number.isFinite(args.samples) || args.samples < 1) {
@@ -64,10 +56,17 @@ export async function runCheckCommand(argv: string[]): Promise<void> {
     config.samples = Math.floor(args.samples);
   }
 
-  const registry = buildEngineRegistry({
-    perplexityApiKey: perplexityKey,
-    openAiApiKey: process.env.OPENAI_API_KEY,
-  });
+  let registry;
+  try {
+    registry = buildEngineRegistry({
+      perplexityApiKey: process.env.PERPLEXITY_API_KEY,
+      openAiApiKey: process.env.OPENAI_API_KEY,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`FATAL ERROR: ${message}`);
+    process.exit(1);
+  }
   const storage = new JsonStorage();
 
   const report = await runConfigCheck(registry, storage, config);
